@@ -1,4 +1,4 @@
-# eng-leadership-toolkit
+# ai-engineering-leader-toolkit
 
 "I just became an engineering manager. What should I focus on?"
 "What's a healthy sprint completion rate?"
