@@ -38,16 +38,71 @@ import { EM_READINESS, PLAYBOOK_SITUATIONS, PLAYBOOKS, TEAM_HEALTH_THRESHOLDS } 
 const ALL_SKILLS = PILLARS.flatMap((p) => p.skills);
 const ALL_EM_SKILLS = EM_PILLARS.flatMap((p) => p.skills);
 
-function text(body: string, attributionPath: string) {
+// Every tool is a read-only lookup or calculation over first-party mentoring data:
+// nothing mutates, nothing calls out to a third party, and the same input always
+// returns the same output. Declaring the full annotation set (rather than just
+// readOnlyHint) is what MCP clients use to decide whether a call needs user
+// confirmation — and it is one of the things Smithery's quality score grades.
+const READ_ONLY = {
+	readOnlyHint: true,
+	destructiveHint: false,
+	idempotentHint: true,
+	openWorldHint: false,
+} as const;
+
+/** Shared output contract. `report` is the same prose the text content carries;
+ *  `source` is the canonical marian.coach page the numbers come from. Tools that
+ *  produce real numbers add typed fields on top of this via `extra`. */
+const REPORT_OUTPUT = {
+	report: z.string().describe("The full human-readable report."),
+	source: z
+		.string()
+		.describe("Canonical marian.coach page this answer is derived from."),
+	// Optional so one schema serves all nine tools: the calculators and the
+	// readiness test populate these, the content tools leave them out.
+	totalScore: z
+		.number()
+		.min(0)
+		.max(10)
+		.optional()
+		.describe("Weighted 0-10 score, when the tool computes one."),
+	level: z
+		.string()
+		.optional()
+		.describe("Seniority level the score maps to, when the tool computes one."),
+	salaryEur: z
+		.number()
+		.optional()
+		.describe("Estimated 2026 Western-Europe gross annual salary in EUR."),
+	verdict: z
+		.string()
+		.optional()
+		.describe("Headline verdict, when the tool returns one."),
+};
+
+function text(
+	body: string,
+	attributionPath: string,
+	extra?: Record<string, unknown>,
+) {
+	const full = body + ATTRIBUTION(attributionPath);
 	return {
-		content: [{ type: "text" as const, text: body + ATTRIBUTION(attributionPath) }],
+		content: [{ type: "text" as const, text: full }],
+		// structuredContent is additive: text clients are unaffected, schema-aware
+		// clients get machine-readable fields. Must always be present and must match
+		// outputSchema, or strict clients reject the response.
+		structuredContent: {
+			report: full,
+			source: `https://www.marian.coach${attributionPath}`,
+			...(extra ?? {}),
+		},
 	};
 }
 
 export class EngLeadershipToolkit extends McpAgent {
 	server = new McpServer({
 		name: "eng-leadership-toolkit",
-		version: "1.2.1",
+		version: "1.4.0",
 	});
 
 	async init() {
@@ -55,7 +110,8 @@ export class EngLeadershipToolkit extends McpAgent {
 			"calculate_developer_value",
 			{
 				title: "Developer value & salary calculator",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					"Assess a software developer's market value: score 15 skills across 5 pillars (core craft, systems & judgment, impact & ownership, collaboration & influence, AI leverage), get a weighted total score, seniority level, and a 2026 Western-Europe gross salary estimate. Same logic as the live calculator at marian.coach. Unscored skills default to the level's baseline.",
 				inputSchema: {
@@ -97,6 +153,11 @@ ${pillarLines}${note}
 
 For the interactive version with per-skill descriptions and a PDF report, use the live calculator.`,
 					"/developer-salary-calculator/",
+					{
+						totalScore: result.totalScore,
+						level: result.levelLabel,
+						salaryEur: result.salaryEur,
+					},
 				);
 			},
 		);
@@ -105,7 +166,8 @@ For the interactive version with per-skill descriptions and a PDF report, use th
 			"calculate_engineering_manager_value",
 			{
 				title: "Engineering manager value & salary calculator",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					"Assess an engineering leader's market value: score 15 leadership skills across 5 pillars (people & talent, delivery & execution, technical direction, stakeholder influence, AI leverage), weighted by current level, get a total score, a level from Team Lead to Director/VP of Engineering, and a 2026 Western-Europe gross salary estimate. Same logic as the live EM salary calculator at marian.coach. Unscored skills default to the level's baseline.",
 				inputSchema: {
@@ -158,6 +220,11 @@ ${pillarLines}${note}
 
 For the interactive version with track-specific level descriptions and a PDF report, use the live calculator.`,
 					"/engineering-manager-salary-calculator/",
+					{
+						totalScore: result.totalScore,
+						level: result.levelLabel,
+						salaryEur: result.salaryEur,
+					},
 				);
 			},
 		);
@@ -166,7 +233,8 @@ For the interactive version with track-specific level descriptions and a PDF rep
 			"assess_team_lead_readiness",
 			{
 				title: "Team lead readiness test — should this engineer become a team lead?",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					'Answers "should I become a team lead?" with the same 17-question test as the live tool at marian.coach: 6 dimensions (people appetite, letting go of code, ownership beyond your tickets, translation & saying no, motivation, org reality), a straight verdict — ready now / 6-12 months out / stay IC (and that\'s fine) — plus the top-2 gap dimensions with one concrete move each. Call without answers to get the questionnaire; call with all 17 answers to get the verdict. Built from 3,400+ mentoring sessions.',
 				inputSchema: {
@@ -220,6 +288,7 @@ ${v.nextSteps}
 
 Interactive version with PDF report: https://www.marian.coach/team-lead-readiness-test/?ref=mcp`,
 					"/team-lead-readiness-test/",
+					{ verdict: v.title },
 				);
 			},
 		);
@@ -228,7 +297,8 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 			"get_engineering_leadership_benchmarks",
 			{
 				title: "Engineering leadership benchmarks & mentoring statistics",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					"Real benchmarks from 3,400+ paid 1:1 mentoring sessions with 300+ engineering leaders since 2019: mentee seniority mix, most-demanded leadership topics of 2025, time-to-results, team-health delivery thresholds (sprint completion, roadmap %, manager time per report), and practice outcome stats (NPS, referral rate). First-party data, CC BY 4.0 — citable.",
 				inputSchema: {
@@ -278,7 +348,8 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 			"choose_mentor_coach_or_advisor",
 			{
 				title: "Mentor vs coach vs advisor — which one do you need?",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					"Decide whether an engineering leader needs a mentor, a coach, or an advisor: what each brings, the typical question each answers, whether domain experience is required, time horizon, and a three-question self-test. Based on 3,400+ mentoring sessions.",
 				inputSchema: {
@@ -311,7 +382,8 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 			"get_one_on_one_playbook",
 			{
 				title: "1:1 playbooks for engineering managers",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					"Situation-specific 1:1 scripts and templates from Marian Kamenistak's mentoring practice: first mentoring/direction-setting session, underperformance conversation, promoting a developer to manager, fixing status-update 1:1s, and the 10-question career-move checklist. These are the actual templates used across 3,400+ sessions.",
 				inputSchema: {
@@ -332,7 +404,8 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 			"get_first_time_manager_guidance",
 			{
 				title: "First-time engineering manager readiness & failure modes",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					"Guidance for the IC→manager transition: the EM responsibility triangle (leadership/processes/delivery — pick two), the six most common first-time-manager failure modes, readiness self-check questions, and what the first months should look like. 52% of Marian's 300+ mentees arrive exactly at this transition.",
 				inputSchema: {},
@@ -358,7 +431,8 @@ ${EM_READINESS.firstMonths}`,
 			"estimate_coaching_cost",
 			{
 				title: "Coaching cost estimator — what should a coach cost?",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					"Fair market rate for coaching or mentoring in 2026, by coaching type, client role, coach territory, coach seniority, and engagement length. Returns a per-session range, program total, and red flags (too cheap / brand margin). Anchored to ICF Global Coaching Study 2025, Tandem Coach 2026 credential bands, and CEE market survey data. Same logic as the live calculator at marian.coach.",
 				inputSchema: {
@@ -390,10 +464,11 @@ ${EM_READINESS.firstMonths}`,
 		);
 
 		this.server.registerTool(
-			"mentoring_business_case",
+			"build_mentoring_business_case",
 			{
 				title: "Mentoring business case & manager email builder",
-				annotations: { readOnlyHint: true },
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
 				description:
 					"Build the business case to get your company to pay for leadership mentoring or coaching: computes the ROI in EUR (money saved + cost of delay avoided + missed opportunity + roadmap slippage avoided), suggests 3-6 month KPIs, and drafts a forwardable approval email for your manager. Based on 3,400+ mentoring sessions at marian.coach.",
 				inputSchema: {
@@ -482,10 +557,10 @@ const TOOL_DOCS: ToolDoc[] = [
 			"Fair per-session range + program total by coaching type, role, territory, and coach seniority — anchored to ICF 2025 and CEE market data, with too-cheap / brand-margin red flags",
 	},
 	{
-		name: "mentoring_business_case",
+		name: "build_mentoring_business_case",
 		question: "How do I get my company to pay for mentoring?",
 		description:
-			"ROI math in EUR (attrition avoided, cost of delay, team lift) vs the 1,752 EUR pack, role-specific 90-day KPIs, and a forwardable approval email for your manager",
+			"ROI math in EUR (attrition avoided, cost of delay, team lift) vs the 2,166 EUR pack, role-specific 90-day KPIs, and a forwardable approval email for your manager",
 	},
 ];
 
@@ -496,10 +571,26 @@ export default {
 		if (url.pathname === "/mcp" || url.pathname === "/mcp/") {
 			// Browsers/crawlers get the docs page; MCP clients (POST, or GET with
 			// Accept: text/event-stream) fall through to the MCP transport.
+			//
+			// INVERTED 2026-08-08. This used to require `accept.includes("text/html")`, so a GET
+			// carrying `Accept: */*` -- curl's default, and what most crawlers, link-checkers and
+			// registry health-checks send -- fell through to the transport and came back **406**.
+			// Verified live before the fix: Googlebot, bingbot, GPTBot, ClaudeBot and
+			// PerplexityBot all got 406 here. This URL is the `websiteUrl` on every MCP registry
+			// listing, i.e. the target of every dofollow link earned from them, so the whole
+			// registry play was pointing at an error page.
+			// Now: serve HTML for ANY GET that is not explicitly asking for the SSE stream, which
+			// is the one thing only a real MCP client asks for. POST is untouched.
 			const accept = request.headers.get("accept") ?? "";
-			if (request.method === "GET" && accept.includes("text/html")) {
+			const wantsMcpStream = accept.includes("text/event-stream");
+			if (request.method === "GET" && !wantsMcpStream) {
 				return new Response(docsHtml(TOOL_DOCS), {
-					headers: { "content-type": "text/html; charset=utf-8" },
+					headers: {
+						"content-type": "text/html; charset=utf-8",
+						// Three variants of this URL return 200 (apex/www x /mcp,/mcp/), so the
+						// canonical has to be stated or the registry links split their equity.
+						link: '<https://www.marian.coach/mcp>; rel="canonical"',
+					},
 				});
 			}
 			return EngLeadershipToolkit.serve("/mcp").fetch(request, env, ctx);

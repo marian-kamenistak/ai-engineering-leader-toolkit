@@ -7,7 +7,7 @@
 		"source": "github"
 	},
 	"websiteUrl": "https://www.marian.coach/mcp",
-	"version": "1.2.1",
+	"version": "1.4.0",
 	"remotes": [
 		{
 			"type": "streamable-http",

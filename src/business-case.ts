@@ -23,10 +23,10 @@ export const ROLE_LABELS: Record<BusinessCaseRole, string> = {
 	product_manager: "Product Manager",
 };
 
-// 6 sessions x 292 EUR company rate, without VAT, invoiced with PO from ELC Hub s.r.o.
-export const SESSION_PRICE_EUR = 292;
+// 6 sessions x 361 EUR public rate (companies pay the same), without VAT, invoiced with PO from ELC Hub s.r.o.
+export const SESSION_PRICE_EUR = 361;
 export const PACK_SESSIONS = 6;
-export const PACK_PRICE_EUR = SESSION_PRICE_EUR * PACK_SESSIONS; // 1,752
+export const PACK_PRICE_EUR = SESSION_PRICE_EUR * PACK_SESSIONS; // 2,166
 
 export const DEFAULT_AVG_SALARY_EUR = 100_000;
 
@@ -172,7 +172,7 @@ ${ENGAGEMENT_STRUCTURE.map((s) => `- ${s}`).join("\n")}
 
 Forwardable email draft:
 
-Subject: Budget ask: leadership mentoring, 1,752 EUR, measured in 90 days
+Subject: Budget ask: leadership mentoring, 2,166 EUR, measured in 90 days
 
 Hi [manager name],
 

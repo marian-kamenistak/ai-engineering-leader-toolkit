@@ -25,6 +25,19 @@ export function docsHtml(tools: ToolDoc[]): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Engineering Leadership Toolkit — MCP server | Marian Kamenistak</title>
 <meta name="description" content="Free remote MCP server for AI assistants: developer value assessment, engineering-leadership benchmarks from 3,400+ mentoring sessions, and mentor-vs-coach guidance. Connect from Claude, Cursor, or ChatGPT.">
+<!-- Added 2026-08-08. This page is the websiteUrl on every MCP registry listing, so it is the
+     landing point of every dofollow link the registry play earns -- and it had no canonical, no
+     JSON-LD and no link back into the site. Apex/www x /mcp,/mcp/ all return 200, hence the
+     explicit canonical. -->
+<link rel="canonical" href="https://www.marian.coach/mcp">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Engineering Leadership Toolkit — MCP server">
+<meta property="og:description" content="Free remote MCP server: developer value assessment, engineering-leadership benchmarks from 3,400+ mentoring sessions, and mentor-vs-coach guidance.">
+<meta property="og:url" content="https://www.marian.coach/mcp">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Engineering Leadership Toolkit","applicationCategory":"DeveloperApplication","operatingSystem":"Any (remote MCP server)","url":"https://www.marian.coach/mcp","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Marian Kamenistak","url":"https://www.marian.coach/"},"publisher":{"@type":"Person","name":"Marian Kamenistak","url":"https://www.marian.coach/"}}
+</script>
 <style>
 	body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
 	code, pre { background: #f4f4f4; border-radius: 4px; font-size: 0.9em; }
