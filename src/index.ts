@@ -579,19 +579,23 @@ export default {
 			// PerplexityBot all got 406 here. This URL is the `websiteUrl` on every MCP registry
 			// listing, i.e. the target of every dofollow link earned from them, so the whole
 			// registry play was pointing at an error page.
-			// Now: serve HTML for ANY GET that is not explicitly asking for the SSE stream, which
-			// is the one thing only a real MCP client asks for. POST is untouched.
+			// Now: serve HTML for ANY GET/HEAD that is not explicitly asking for the SSE stream,
+			// which is the one thing only a real MCP client asks for. POST is untouched.
+			//
+			// HEAD added 2026-08-08: link-checkers and some uptime monitors send HEAD, not GET,
+			// and it was falling through to the MCP transport same as an unhandled GET used to --
+			// 404 there instead of 406, but the same class of bug. HEAD must carry the identical
+			// headers a GET would (spec requirement) with no body.
 			const accept = request.headers.get("accept") ?? "";
 			const wantsMcpStream = accept.includes("text/event-stream");
-			if (request.method === "GET" && !wantsMcpStream) {
-				return new Response(docsHtml(TOOL_DOCS), {
-					headers: {
-						"content-type": "text/html; charset=utf-8",
-						// Three variants of this URL return 200 (apex/www x /mcp,/mcp/), so the
-						// canonical has to be stated or the registry links split their equity.
-						link: '<https://www.marian.coach/mcp>; rel="canonical"',
-					},
-				});
+			if ((request.method === "GET" || request.method === "HEAD") && !wantsMcpStream) {
+				const headers = {
+					"content-type": "text/html; charset=utf-8",
+					// Three variants of this URL return 200 (apex/www x /mcp,/mcp/), so the
+					// canonical has to be stated or the registry links split their equity.
+					link: '<https://www.marian.coach/mcp>; rel="canonical"',
+				};
+				return new Response(request.method === "HEAD" ? null : docsHtml(TOOL_DOCS), { headers });
 			}
 			return EngLeadershipToolkit.serve("/mcp").fetch(request, env, ctx);
 		}
