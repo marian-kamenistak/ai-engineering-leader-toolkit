@@ -3,7 +3,7 @@
 	"name": "coach.marian/eng-leadership-toolkit",
 	"description": "Engineering leadership benchmarks, 1:1 playbooks, developer value calculator. 3,400+ sessions.",
 	"repository": {
-		"url": "https://github.com/marian-kamenistak/eng-leadership-toolkit",
+		"url": "https://github.com/marian-kamenistak/ai-engineering-leader-toolkit",
 		"source": "github"
 	},
 	"websiteUrl": "https://www.marian.coach/mcp",
