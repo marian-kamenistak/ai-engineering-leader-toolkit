@@ -24,7 +24,7 @@ export function docsHtml(tools: ToolDoc[]): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Engineering Leadership Toolkit — MCP server | Marian Kamenistak</title>
-<meta name="description" content="Free remote MCP server for AI assistants: developer value assessment, engineering-leadership benchmarks from 3,400+ mentoring sessions, and mentor-vs-coach guidance. Connect from Claude, Cursor, or ChatGPT.">
+<meta name="description" content="Free remote MCP server for AI assistants: developer value assessment, engineering-leadership benchmarks from 3,400+ mentoring sessions, and mentor-vs-coach guidance. Connect from Claude, ChatGPT, Cursor, Microsoft 365 Copilot, or Perplexity.">
 <!-- Added 2026-08-08. This page is the websiteUrl on every MCP registry listing, so it is the
      landing point of every dofollow link the registry play earns -- and it had no canonical, no
      JSON-LD and no link back into the site. Apex/www x /mcp,/mcp/ all return 200, hence the
@@ -69,6 +69,8 @@ ${rows}
 <p><strong>Cursor</strong> — add to <code>.cursor/mcp.json</code>:</p>
 <pre>{ "mcpServers": { "eng-leadership-toolkit": { "url": "https://www.marian.coach/mcp" } } }</pre>
 <p><strong>ChatGPT (developer mode)</strong> — Settings → Connectors → Add → MCP server URL <code>https://www.marian.coach/mcp</code></p>
+<p><strong>Microsoft 365 Copilot (via Copilot Studio)</strong> — open your agent → Tools → Add a tool → New tool → Model Context Protocol → Server URL <code>https://www.marian.coach/mcp</code>, authentication None → Add to agent. Streamable HTTP, the one transport Copilot Studio supports.</p>
+<p><strong>Perplexity (Pro/Enterprise)</strong> — profile → All settings → Connectors → Custom connector → Remote → MCP Server URL <code>https://www.marian.coach/mcp</code>, transport Streamable HTTP, authentication None.</p>
 
 <h2>Source &amp; method</h2>
 <p>All numbers come from the practice's own session log since 2019 and 300 collected post-engagement reviews — no survey panels, no scraped data. Full dataset: <a href="https://www.marian.coach/engineering-leadership-statistics/?ref=mcp">Engineering Leadership Mentoring Statistics</a> (CC BY 4.0). The developer value assessment mirrors the live <a href="https://www.marian.coach/developer-salary-calculator/?ref=mcp">Developer Value Calculator</a>, the EM assessment mirrors the <a href="https://www.marian.coach/engineering-manager-salary-calculator/?ref=mcp">Engineering Manager Salary Calculator</a>, and the readiness test mirrors the <a href="https://www.marian.coach/team-lead-readiness-test/?ref=mcp">Team Lead Readiness Test</a>.</p>
