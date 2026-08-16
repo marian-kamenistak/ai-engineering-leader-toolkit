@@ -74,6 +74,11 @@ export interface Strings {
 	evidence: { claim: string; source: string; url: string }[];
 	engagement: string[];
 	next_steps: string[];
+	/** The four value lines + the CFO rule, as published on
+	 * marian.coach/get-your-company-to-pay-for-mentoring/. Static framing, not computed. */
+	value_formula: { heading: string; lines: string[]; rule: string };
+	/** The three worked examples from the same page. Static, role-anchored, already public. */
+	worked_examples: { role: string; setup: string; kpis: string; math: string }[];
 	math: {
 		attrition: string; // {n} {unit} {value}
 		person: string;
@@ -97,6 +102,8 @@ export interface Strings {
 		evidence: string;
 		next_steps: string;
 		engagement: string;
+		value_formula: string;
+		worked_examples: string;
 	};
 }
 
@@ -355,6 +362,36 @@ const EN: Strings = {
 		"Book the free intro call once you have a yes: https://www.marian.coach/meet",
 		"Invoice goes to your company with your PO number",
 	],
+	value_formula: {
+		heading: "What the mentoring is worth over 6 months, added up from four lines",
+		lines: [
+			"Money saved: attrition prevented, mis-hires avoided, firefighting hours cut",
+			"Cost of delay avoided: roadmap items shipping on time instead of a quarter late",
+			"Missed opportunity recovered: the initiative nobody had bandwidth to lead",
+			"Roadmap slippage avoided: commitments that hold, planned vs shipped",
+		],
+		rule: "Count only the lines you can defend in front of a CFO, then halve the total. If it still clears the ask several times over, send it. Managers approve numbers with a review date, rarely feelings.",
+	},
+	worked_examples: [
+		{
+			role: "Engineering Manager, team of 8",
+			setup: "Fully loaded team cost around 800,000 EUR a year. One senior engineer has a foot out the door and delivery predictability sits near 60%.",
+			kpis: "Regretted attrition zero, planned-vs-shipped from 60% to 85%, the open underperformance case actioned within 4 weeks.",
+			math: "Counting only the retention line: replacing that senior costs 40 to 60k EUR, the pack costs 2,580 EUR. One prevented departure pays for the mentoring 15 times over.",
+		},
+		{
+			role: "Director, 3 teams, 24 engineers",
+			setup: "A reorg decision has been stuck for two quarters, and the flagship feature with roughly 300,000 EUR of annual revenue attached is slipping with it.",
+			kpis: "Reorg decided and shipped within 6 weeks, the feature back on its committed date, both open senior roles closed.",
+			math: "Counting only cost of delay: shipping one quarter earlier on a 300,000 EUR revenue line is worth about 75,000 EUR. Halved for CFO skepticism, that is 37,000 against 2,580. Still 14x.",
+		},
+		{
+			role: "Staff Engineer",
+			setup: "A build-vs-buy platform decision with 100,000+ EUR a year riding on it, and influence that stops at the team boundary.",
+			kpis: "The decision doc written, defended and accepted; one cross-team initiative led end to end; the promotion case documented.",
+			math: "One platform choice gone wrong recurs every year at six figures, and replacing a staff engineer runs 6 to 9 months of salary. Either line alone beats the pack price by an order of magnitude.",
+		},
+	],
 	math: {
 		attrition:
 			"Attrition avoided: {n} senior {unit} at risk x 50,000 EUR (replacing a senior costs 40 to 60k EUR; Gallup: one-half to two times salary) = {value} EUR",
@@ -381,6 +418,8 @@ const EN: Strings = {
 		evidence: "Sources",
 		next_steps: "Next steps",
 		engagement: "Engagement",
+		value_formula: "How to size the value",
+		worked_examples: "Worked examples",
 	},
 };
 
@@ -636,6 +675,36 @@ const CS: Strings = {
 		"Až máš ano, rezervuj intro call zdarma: https://www.marian.coach/meet",
 		"Faktura jde na firmu s vaším číslem objednávky",
 	],
+	value_formula: {
+		heading: "Kolik mentoring vynese za 6 měsíců, sečteno ze čtyř řádků",
+		lines: [
+			"Ušetřené peníze: odvrácený odchod, nepovedený nábor, hodiny strávené hašením",
+			"Odvrácená cena zpoždění: položky roadmapy dodané včas, ne o kvartál později",
+			"Získaná příležitost: iniciativa, na kterou nikdo neměl kapacitu",
+			"Odvrácené klouzání roadmapy: závazky, které drží, plán vs. dodáno",
+		],
+		rule: "Počítej jen řádky, které obhájíš před CFO, a pak výsledek vyděl dvěma. Když pořád několikanásobně převyšuje částku, o kterou žádáš, pošli to. Manažeři schvalují čísla s termínem review, pocity málokdy.",
+	},
+	worked_examples: [
+		{
+			role: "Engineering Manager, tým 8 lidí",
+			setup: "Plně nákladový tým kolem 800 000 EUR ročně. Jeden senior má nohu ze dveří a predikovatelnost dodávek se drží kolem 60 %.",
+			kpis: "Nulová nechtěná fluktuace, plán vs. dodáno z 60 % na 85 %, otevřený případ podvýkonu vyřešený do 4 týdnů.",
+			math: "Jen retenční řádek: nahradit toho seniora stojí 40 až 60 tisíc EUR, balíček stojí 2 580 EUR. Jeden odvrácený odchod zaplatí mentoring patnáctkrát.",
+		},
+		{
+			role: "Director, 3 týmy, 24 engineerů",
+			setup: "Rozhodnutí o reorganizaci leží dva kvartály a s ním klouže i vlajková funkce, na které visí zhruba 300 000 EUR ročních tržeb.",
+			kpis: "Reorganizace rozhodnutá a nasazená do 6 týdnů, funkce zpět na slíbeném datu, obě otevřené seniorní pozice zavřené.",
+			math: "Jen cena zpoždění: dodat o kvartál dřív na tržbách 300 000 EUR má hodnotu asi 75 000 EUR. Po vydělení dvěma kvůli skepsi CFO je to 37 000 proti 2 580. Pořád 14x.",
+		},
+		{
+			role: "Staff Engineer",
+			setup: "Rozhodnutí build vs. buy, na kterém visí 100 000+ EUR ročně, a vliv, který končí na hranici týmu.",
+			kpis: "Decision doc napsaný, obhájený a přijatý; jedna mezitýmová iniciativa dotažená od začátku do konce; podklad k povýšení sepsaný.",
+			math: "Špatná volba platformy se vrací každý rok v řádu statisíců a nahradit staff engineera stojí 6 až 9 měsíčních platů. Kterýkoli z těch řádků sám o sobě překonává cenu balíčku o řád.",
+		},
+	],
 	math: {
 		attrition:
 			"Odvrácená fluktuace: {n} {unit} v riziku x 50 000 EUR (nahradit seniora stojí 40 až 60 tisíc EUR; Gallup: půl až dvojnásobek platu) = {value} EUR",
@@ -662,6 +731,8 @@ const CS: Strings = {
 		evidence: "Zdroje",
 		next_steps: "Další kroky",
 		engagement: "Podmínky",
+		value_formula: "Jak spočítat hodnotu",
+		worked_examples: "Spočítané příklady",
 	},
 };
 

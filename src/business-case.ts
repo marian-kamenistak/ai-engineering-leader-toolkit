@@ -81,6 +81,11 @@ export interface BusinessCase {
 	objections: { objection: string; answer: string }[];
 	next_steps: string[];
 	engagement: string[];
+	/** The four value lines + the CFO rule from the public page. Static framing that tells
+	 * the reader WHICH numbers to count before the napkin math computes anything. */
+	value_formula: { heading: string; lines: string[]; rule: string };
+	/** Three role-anchored worked examples from the public page. Static, already published. */
+	worked_examples: { role: string; setup: string; kpis: string; math: string }[];
 	meta: {
 		lang: Lang;
 		situation: Situation;
@@ -398,6 +403,8 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 		})),
 		next_steps: S.next_steps,
 		engagement: S.engagement,
+		value_formula: S.value_formula,
+		worked_examples: S.worked_examples,
 		meta: { lang, situation, pack, role, first_time: firstTime, at_risk: atRisk },
 	};
 }
@@ -423,10 +430,17 @@ export function renderReport(bc: BusinessCase): string {
 		"",
 		`${R.problem}: ${bc.one_pager.sections[0]?.body ?? ""}`,
 		"",
+		`## ${R.value_formula}`,
+		bc.value_formula.heading,
+		...bc.value_formula.lines.map((l) => `- ${l}`),
+		bc.value_formula.rule,
+		"",
 		`## ${R.math}`,
 		...(bc.math.lines.length ? bc.math.lines.map((l) => `- ${l}`) : []),
 		bc.math.note,
 		"",
+		`## ${R.worked_examples}`,
+		...bc.worked_examples.flatMap((w) => [`### ${w.role}`, w.setup, `KPIs: ${w.kpis}`, w.math, ""]),
 		`# ${R.one_pager}`,
 		bc.one_pager.title,
 		"",

@@ -126,6 +126,23 @@ const REPORT_OUTPUT = {
 		.array(z.object({ claim: z.string(), source: z.string(), url: z.string() }))
 		.optional()
 		.describe("Sources the case may cite."),
+	valueFormula: z
+		.object({ heading: z.string(), lines: z.array(z.string()), rule: z.string() })
+		.optional()
+		.describe(
+			"The four value lines to add up (money saved, cost of delay, missed opportunity, roadmap slippage) plus the count-then-halve CFO rule.",
+		),
+	workedExamples: z
+		.array(
+			z.object({
+				role: z.string(),
+				setup: z.string(),
+				kpis: z.string(),
+				math: z.string(),
+			}),
+		)
+		.optional()
+		.describe("Three published worked examples: EM, Director, Staff Engineer."),
 };
 
 function text(
@@ -150,7 +167,7 @@ function text(
 export class EngLeadershipToolkit extends McpAgent {
 	server = new McpServer({
 		name: "eng-leadership-toolkit",
-		version: "1.5.0",
+		version: "1.6.0",
 	});
 
 	async init() {
@@ -514,11 +531,11 @@ ${EM_READINESS.firstMonths}`,
 		this.server.registerTool(
 			"build_mentoring_business_case",
 			{
-				title: "Mentoring business case: manager email, one-pager, objections",
+				title: "Get your company to pay: ROI math, manager email, one-pager",
 				annotations: { ...READ_ONLY },
 				outputSchema: REPORT_OUTPUT,
 				description:
-					"Build the case that gets your company to pay for leadership mentoring: a forwardable email to your manager (learning-budget or no-budget-line version), a Slack-length version, five talking points, a manager-facing one-pager for finance, answers to the five usual objections, and napkin math (senior people at risk x replacement cost vs the 2,580 EUR quarter or a 430 EUR pilot session). English or Czech. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,400+ mentoring sessions at marian.coach.",
+					"Build the case that gets your company to pay for leadership mentoring — everything on marian.coach/get-your-company-to-pay-for-mentoring/, personalised: the four-line value formula and the count-then-halve CFO rule, three worked examples (EM, Director, Staff Engineer), napkin math (senior people at risk x replacement cost vs the 2,580 EUR quarter or a 430 EUR pilot session), a forwardable email to your manager in a learning-budget or a no-budget-line version, a Slack-length version, five talking points, a manager-facing one-pager for finance, and answers to the five usual objections. English or Czech, tykani or vykani. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,400+ mentoring sessions at marian.coach.",
 				inputSchema: BUSINESS_CASE_INPUT_SHAPE,
 			},
 			async (input) => {
@@ -539,6 +556,8 @@ ${EM_READINESS.firstMonths}`,
 					},
 					objections: bc.objections,
 					evidence: bc.evidence,
+					valueFormula: bc.value_formula,
+					workedExamples: bc.worked_examples,
 				});
 			},
 		);
@@ -597,7 +616,7 @@ const TOOL_DOCS: ToolDoc[] = [
 		name: "build_mentoring_business_case",
 		question: "How do I get my company to pay for mentoring?",
 		description:
-			"Manager email (learning-budget or no-budget version), Slack short, five talking points, a one-pager for finance, the five usual objections answered, napkin math vs the 2,580 EUR quarter or a 430 EUR pilot session — English or Czech",
+			"The whole get-your-company-to-pay page, personalised: the four-line value formula, three worked examples, napkin math vs the 2,580 EUR quarter or a 430 EUR pilot session, a manager email (learning-budget or no-budget version), Slack short, five talking points, a one-pager for finance, and the five usual objections answered — English or Czech",
 	},
 ];
 
