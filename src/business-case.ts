@@ -23,10 +23,12 @@ export const ROLE_LABELS: Record<BusinessCaseRole, string> = {
 	product_manager: "Product Manager",
 };
 
-// 6 sessions x 361 EUR public rate (companies pay the same), without VAT, invoiced with PO from ELC Hub s.r.o.
-export const SESSION_PRICE_EUR = 361;
+// 6 sessions x 430 EUR list rate (companies pay the same), without VAT, invoiced by Marian
+// Kamenistak, sole trader. Re-gate 2026-08-09: 2,166 (361/session) exists only via the AI
+// wizard at marian.coach/mcp/mentoring + a booked intro — this tool quotes the list price.
+export const SESSION_PRICE_EUR = 430;
 export const PACK_SESSIONS = 6;
-export const PACK_PRICE_EUR = SESSION_PRICE_EUR * PACK_SESSIONS; // 2,166
+export const PACK_PRICE_EUR = SESSION_PRICE_EUR * PACK_SESSIONS; // 2,580
 
 export const DEFAULT_AVG_SALARY_EUR = 100_000;
 
@@ -172,7 +174,7 @@ ${ENGAGEMENT_STRUCTURE.map((s) => `- ${s}`).join("\n")}
 
 Forwardable email draft:
 
-Subject: Budget ask: leadership mentoring, 2,166 EUR, measured in 90 days
+Subject: Budget ask: leadership mentoring, 2,580 EUR, measured in 90 days
 
 Hi [manager name],
 

@@ -560,7 +560,7 @@ const TOOL_DOCS: ToolDoc[] = [
 		name: "build_mentoring_business_case",
 		question: "How do I get my company to pay for mentoring?",
 		description:
-			"ROI math in EUR (attrition avoided, cost of delay, team lift) vs the 2,166 EUR pack, role-specific 90-day KPIs, and a forwardable approval email for your manager",
+			"ROI math in EUR (attrition avoided, cost of delay, team lift) vs the 2,580 EUR pack (2,166 through the AI wizard at /mcp/mentoring), role-specific 90-day KPIs, and a forwardable approval email for your manager",
 	},
 ];
 
@@ -603,5 +603,62 @@ export default {
 		return new Response("Not found. MCP endpoint: https://www.marian.coach/mcp", {
 			status: 404,
 		});
+	},
+
+	/**
+	 * Cross-probe uptime monitor for the SIBLING mentoring-inquiry-builder Worker
+	 * (marian.coach/mcp/mentoring), every 15 min. Why here: a Worker cannot fetch a URL its
+	 * own routes match (Cloudflare's self-recursion guard fails the subrequest), so each MCP
+	 * Worker probes the other one. The mentoring Worker probes this /mcp docs page back.
+	 * Silent when green; Slack webhook (SLACK_WEBHOOK_URL secret) on failure only.
+	 * Never probe this Worker's own /mcp* from here.
+	 */
+	async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+		const SIBLING = "https://www.marian.coach/mcp/mentoring";
+		const checks: { name: string; run: () => Promise<boolean> }[] = [
+			{
+				name: "mentoring docs GET (wildcard Accept)",
+				run: async () => (await fetch(SIBLING, { headers: { accept: "*/*" } })).status === 200,
+			},
+			{
+				name: "mentoring MCP initialize POST",
+				run: async () => {
+					const r = await fetch(SIBLING, {
+						method: "POST",
+						headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+						body: JSON.stringify({
+							jsonrpc: "2.0",
+							id: 1,
+							method: "initialize",
+							params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "uptime-probe", version: "1.0" } },
+						}),
+					});
+					return r.status === 200;
+				},
+			},
+		];
+
+		const failures: string[] = [];
+		for (const c of checks) {
+			try {
+				if (!(await c.run())) failures.push(c.name);
+			} catch (e) {
+				failures.push(`${c.name} (${String(e).slice(0, 80)})`);
+			}
+		}
+		if (!failures.length) return;
+
+		console.error("[UPTIME_FAIL]", failures);
+		const cf = env as unknown as { SLACK_WEBHOOK_URL?: string };
+		if (cf.SLACK_WEBHOOK_URL) {
+			await fetch(cf.SLACK_WEBHOOK_URL, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					text: `:rotating_light: Mentoring MCP uptime probe failing (probed from the toolkit Worker): ${failures.join(" · ")} — registries health-check these URLs, fix before listings derank.`,
+					unfurl_links: false,
+				}),
+			}).catch((e) => console.error("uptime slack post failed", String(e)));
+		}
 	},
 };

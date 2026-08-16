@@ -29,4 +29,10 @@
 	"observability": {
 		"enabled": true,
 	},
+	// Cross-probe uptime cron: this Worker watches the sibling mentoring-inquiry-builder
+	// (a Worker cannot probe its own routes — Cloudflare self-recursion guard), and the
+	// mentoring Worker watches this one's /mcp back. Slack alert on failure only.
+	"triggers": {
+		"crons": ["*/15 * * * *"],
+	},
 }
