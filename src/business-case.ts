@@ -245,7 +245,10 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 	const delayValue = input.delayed_revenue_eur ? input.delayed_revenue_eur / DELAY_DIVISOR : 0;
 	const total = attritionValue + liftValue + delayValue;
 	const discounted = total / 2;
-	const roi = total > 0 ? round1(discounted / askEur) : null;
+	// The value case is always compared against the QUARTER (2,580 EUR), never against the
+	// 430 EUR pilot ask: retention value is what the engagement buys, not what one session
+	// buys, and 50,000 / 430 = 116x is exactly the implausible multiple a CFO stops reading at.
+	const roi = total > 0 ? round1(discounted / PACK_PRICE_EUR) : null;
 
 	const mathLines: string[] = [];
 	if (atRisk > 0) {
@@ -278,7 +281,7 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 		mathLines.push(
 			fill(S.math.cfo, {
 				discounted: eur(lang, discounted),
-				ask: eur(lang, askEur),
+				pack: eur(lang, PACK_PRICE_EUR),
 				roi: String(roi),
 			}),
 		);
@@ -286,7 +289,7 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 	const mathNote =
 		total > 0
 			? fill(S.math.note_pos, { roi: String(roi) })
-			: fill(S.math.note_zero, { ask: eur(lang, askEur) });
+			: fill(S.math.note_zero, { pack: eur(lang, PACK_PRICE_EUR) });
 
 	// ── email ──
 	const E = S.email[situation];
@@ -302,7 +305,7 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 						atRisk === 1 ? S.email.at_risk_1 : atRisk >= 5 ? S.email.at_risk_5 : S.email.at_risk_n,
 						formality,
 					),
-					{ n: atRisk },
+					{ n: atRisk, pack: eur(lang, PACK_PRICE_EUR) },
 				);
 	const emailParas: (string | null)[] = [
 		greeting,
@@ -333,7 +336,7 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 		fill(S.talking.t2, { ask_line: S.slack.ask_line[situation] }),
 		S.talking.t3,
 		atRisk > 0
-			? fill(S.talking.t4_risk, { n: atRisk, ask_eur: eur(lang, askEur) })
+			? fill(S.talking.t4_risk, { n: atRisk, pack: eur(lang, PACK_PRICE_EUR) })
 			: S.talking.t4_zero,
 		S.talking.t5,
 	];
@@ -369,12 +372,12 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 						...mathLines.slice(0, -1),
 						fill(P.math_risk_closing, {
 							discounted: eur(lang, discounted),
-							ask: eur(lang, askEur),
+							pack: eur(lang, PACK_PRICE_EUR),
 							roi: String(roi),
 						}),
 					],
 				}
-			: { heading: P.s_math, body: fill(P.math_zero_body, { ask: eur(lang, askEur) }) },
+			: { heading: P.s_math, body: fill(P.math_zero_body, { pack: eur(lang, PACK_PRICE_EUR) }) },
 	);
 	sections.push(
 		{ heading: P.s_give_back, body: P.give_back_body },

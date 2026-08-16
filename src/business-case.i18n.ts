@@ -35,7 +35,7 @@ export interface Strings {
 		ld_budget: EmailStrings;
 		no_budget: EmailStrings;
 		first_time: F; // {role}
-		at_risk_1: F; // {n}
+		at_risk_1: F; // {n} {pack}
 		at_risk_n: F; // {n}, 2-4 in Czech
 		at_risk_5: F; // {n}, 5+ in Czech (EN reuses at_risk_n)
 		p5: F;
@@ -63,8 +63,8 @@ export interface Strings {
 		alt_bullets: Record<Alternative, string>;
 		alt_closing: string;
 		s_math: string;
-		math_risk_closing: string; // {discounted} {ask} {roi}
-		math_zero_body: string; // {ask}
+		math_risk_closing: string; // {discounted} {pack} {roi}
+		math_zero_body: string; // {pack}
 		s_give_back: string;
 		give_back_body: string;
 		s_decision: string;
@@ -85,8 +85,8 @@ export interface Strings {
 		people: string;
 		delay: string; // {rev} {value}
 		lift: string; // {team} {sal} {value}
-		cfo: string; // {discounted} {ask} {roi}
-		note_zero: string; // {ask}
+		cfo: string; // {discounted} {pack} {roi}
+		note_zero: string; // {pack}
 		note_pos: string; // {roi}
 	};
 	report: {
@@ -201,11 +201,11 @@ const EN: Strings = {
 		first_time:
 			"This is my first {role} seat. Most managers get their first leadership training about a decade after they start leading people (HBR / Zenger Folkman). I'd rather not run that experiment on this team.",
 		at_risk_1:
-			"One more number: we have {n} senior person I'm not sure we keep. Replacing one costs 40 to 60k EUR. This costs 2,580.",
+			"One more number: we have {n} senior person I'm not sure we keep. Replacing one costs 40 to 60k EUR. The quarter costs {pack} EUR.",
 		at_risk_n:
-			"One more number: we have {n} senior people I'm not sure we keep. Replacing one costs 40 to 60k EUR. This costs 2,580.",
+			"One more number: we have {n} senior people I'm not sure we keep. Replacing one costs 40 to 60k EUR. The quarter costs {pack} EUR.",
 		at_risk_5:
-			"One more number: we have {n} senior people I'm not sure we keep. Replacing one costs 40 to 60k EUR. This costs 2,580.",
+			"One more number: we have {n} senior people I'm not sure we keep. Replacing one costs 40 to 60k EUR. The quarter costs {pack} EUR.",
 		p5: "Pricing is public at marian.coach/pricing/. I'll write up what I learn for the team.",
 		close: "Can I get a yes by {decide_by}?",
 	},
@@ -222,7 +222,7 @@ const EN: Strings = {
 		t2: "This is 1:1 with someone who held my role, on my situation, not a course. {ask_line}.",
 		t3: "Risk is capped: free intro call, sessions under 7/10 aren't charged, review at session 3, stop at 90 days if nothing moves.",
 		t4_risk:
-			"Money: replacing one of the {n} seniors we might lose costs 40 to 60k EUR. This is {ask_eur} EUR.",
+			"Money: replacing one of the {n} seniors we might lose costs 40 to 60k EUR. The full quarter is {pack} EUR.",
 		t4_zero:
 			"Money: one prevented departure or one quarter of roadmap slip pays for it 15 times over.",
 		t5: "I'll write up what I learn for the team, and the invoice goes to us with our PO number.",
@@ -286,9 +286,9 @@ const EN: Strings = {
 			"1:1 on my problem with targets and a stop clause is the cheapest of these per outcome.",
 		s_math: "Napkin math",
 		math_risk_closing:
-			"Halved to be safe: {discounted} EUR against {ask} EUR = {roi}x.",
+			"Halved to be safe: {discounted} EUR against the {pack} EUR quarter = {roi}x.",
 		math_zero_body:
-			"Replacing one senior engineer costs 40 to 60k EUR (Gallup: one-half to two times salary). This costs {ask} EUR. One prevented departure or one quarter of roadmap slip pays for it 15 times over.",
+			"Replacing one senior engineer costs 40 to 60k EUR (Gallup: one-half to two times salary). The quarter costs {pack} EUR. One prevented departure or one quarter of roadmap slip pays for it 15 times over.",
 		s_give_back: "What I give back",
 		give_back_body: "A written summary for the team after session 6.",
 		s_decision: "Decision requested by",
@@ -400,9 +400,9 @@ const EN: Strings = {
 		delay:
 			"Cost of delay avoided: {rev} EUR annual revenue on the slipping item / 4 (one quarter earlier) = {value} EUR",
 		lift: "Team lift: {team} engineers x {sal} EUR x 2% (a deliberately conservative lift) = {value} EUR",
-		cfo: "Halved to be safe (the CFO discount): {discounted} EUR against {ask} EUR = {roi}x",
+		cfo: "Halved to be safe (the CFO discount): {discounted} EUR against the {pack} EUR quarter = {roi}x",
 		note_zero:
-			"No at-risk seniors given, so no total is claimed. Replacing one senior costs 40 to 60k EUR; against {ask} EUR one prevented departure pays for it 15 times over.",
+			"No at-risk seniors given, so no total is claimed. Replacing one senior costs 40 to 60k EUR; against the {pack} EUR quarter one prevented departure pays for it 15 times over.",
 		note_pos: "After halving, the case clears the ask {roi} times over.",
 	},
 	report: {
@@ -510,11 +510,11 @@ const CS: Strings = {
 		first_time:
 			"Je to moje první role jako {role}. Většina manažerů dostane první leadership trénink zhruba deset let po tom, co začne vést lidi (HBR / Zenger Folkman). Nechci ten experiment dělat na tomhle týmu.",
 		at_risk_1:
-			"Ještě jedno číslo: máme {n} seniora, u kterého hrozí, že odejde. Nahradit ho stojí 40 až 60 tisíc EUR. Tohle stojí 2 580.",
+			"Ještě jedno číslo: máme {n} seniora, u kterého hrozí, že odejde. Nahradit ho stojí 40 až 60 tisíc EUR. Kvartál stojí {pack} EUR.",
 		at_risk_n:
-			"Ještě jedno číslo: máme {n} seniory, u kterých hrozí, že odejdou. Nahradit jednoho stojí 40 až 60 tisíc EUR. Tohle stojí 2 580.",
+			"Ještě jedno číslo: máme {n} seniory, u kterých hrozí, že odejdou. Nahradit jednoho stojí 40 až 60 tisíc EUR. Kvartál stojí {pack} EUR.",
 		at_risk_5:
-			"Ještě jedno číslo: máme {n} seniorů, u kterých hrozí, že odejdou. Nahradit jednoho stojí 40 až 60 tisíc EUR. Tohle stojí 2 580.",
+			"Ještě jedno číslo: máme {n} seniorů, u kterých hrozí, že odejdou. Nahradit jednoho stojí 40 až 60 tisíc EUR. Kvartál stojí {pack} EUR.",
 		p5: "Ceník je veřejný na marian.coach/cs/cenik/. Co se naučím, sepíšu pro tým.",
 		close: { informal: "Dostanu do {decide_by} ano?", formal: "Dostanu od Vás do {decide_by} ano?" },
 	},
@@ -536,7 +536,7 @@ const CS: Strings = {
 		t2: "Je to 1:1 s někým, kdo dělal mou roli, na mé konkrétní situaci, ne kurz. {ask_line}.",
 		t3: "Riziko je omezené: intro call zdarma, session pod 7/10 se neplatí, review po třetí session, po 90 dnech končíme, když se nic nepohne.",
 		t4_risk:
-			"Peníze: nahradit jednoho z {n} seniorů, které můžeme ztratit, stojí 40 až 60 tisíc EUR. Tohle je {ask_eur} EUR.",
+			"Peníze: nahradit jednoho z {n} seniorů, které můžeme ztratit, stojí 40 až 60 tisíc EUR. Celý kvartál je {pack} EUR.",
 		t4_zero:
 			"Peníze: jeden odchod, kterému předejdeme, nebo jeden kvartál skluzu na roadmapě to zaplatí patnáctkrát.",
 		t5: "Co se naučím, sepíšu pro tým, a faktura jde na firmu s naším číslem objednávky.",
@@ -600,9 +600,9 @@ const CS: Strings = {
 		alt_closing: "1:1 na mém problému s cíli a stop klauzulí vychází na výsledek nejlevněji.",
 		s_math: "Počty na ubrousek",
 		math_risk_closing:
-			"Pro jistotu půlka: {discounted} EUR proti {ask} EUR = {roi}x.",
+			"Pro jistotu půlka: {discounted} EUR proti kvartálu za {pack} EUR = {roi}x.",
 		math_zero_body:
-			"Nahradit jednoho senior engineera stojí 40 až 60 tisíc EUR (Gallup: půl až dvojnásobek platu). Tohle stojí {ask} EUR. Jeden odchod, kterému předejdeme, nebo jeden kvartál skluzu to zaplatí patnáctkrát.",
+			"Nahradit jednoho senior engineera stojí 40 až 60 tisíc EUR (Gallup: půl až dvojnásobek platu). Kvartál stojí {pack} EUR. Jeden odchod, kterému předejdeme, nebo jeden kvartál skluzu to zaplatí patnáctkrát.",
 		s_give_back: "Co dám zpět",
 		give_back_body: "Písemné shrnutí pro tým po šesté session.",
 		s_decision: "Rozhodnutí potřebuji do",
@@ -713,9 +713,9 @@ const CS: Strings = {
 		delay:
 			"Odvrácená cena zpoždění: {rev} EUR ročních tržeb na klouzající položce / 4 (o kvartál dřív) = {value} EUR",
 		lift: "Zlepšení týmu: {team} engineerů x {sal} EUR x 2 % (záměrně konzervativní odhad) = {value} EUR",
-		cfo: "Pro jistotu půlka (CFO diskont): {discounted} EUR proti {ask} EUR = {roi}x",
+		cfo: "Pro jistotu půlka (CFO diskont): {discounted} EUR proti kvartálu za {pack} EUR = {roi}x",
 		note_zero:
-			"Bez zadaných seniorů v riziku nic nenárokujeme. Nahradit jednoho seniora stojí 40 až 60 tisíc EUR; proti {ask} EUR to jeden odvrácený odchod zaplatí patnáctkrát.",
+			"Bez zadaných seniorů v riziku nic nenárokujeme. Nahradit jednoho seniora stojí 40 až 60 tisíc EUR; proti kvartálu za {pack} EUR to jeden odvrácený odchod zaplatí patnáctkrát.",
 		note_pos: "Po půlení případ pokryje žádanou částku {roi}x.",
 	},
 	report: {

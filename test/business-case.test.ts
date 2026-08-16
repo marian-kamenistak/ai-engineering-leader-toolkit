@@ -80,7 +80,22 @@ describe("business case core — behaviour", () => {
 		expect(empty.email.body).toMatch(/\[your name\]/);
 	});
 
-	it("napkin math: at-risk seniors × 50k, halved, vs the ask; zero → 15x framing, no fake total", () => {
+	it("value is always compared against the 2,580 quarter, never the 430 pilot ask", () => {
+		// 50,000 / 430 = 116x is the implausible multiple a CFO stops reading at, and the pilot
+		// email must not quote a cost that contradicts its own 430 EUR ask.
+		const pilot = buildBusinessCase({ ...base, situation: "no_budget", at_risk_attrition: 2 });
+		expect(pilot.math.ask_eur).toBe(430);
+		expect(pilot.math.roi_multiple).toBe(19.4);
+		expect(pilot.math.lines.join("\n")).toMatch(/2,580 EUR quarter/);
+		expect(pilot.email.body).toMatch(/The quarter costs 2,580 EUR/);
+		expect(pilot.talking_points.join("\n")).not.toMatch(/costs 40 to 60k EUR\. The full quarter is 430/);
+		const quarter = buildBusinessCase({ ...base, situation: "ld_budget", at_risk_attrition: 2 });
+		expect(quarter.math.roi_multiple).toBe(pilot.math.roi_multiple);
+		const pilotZero = buildBusinessCase({ ...base, situation: "no_budget" });
+		expect(pilotZero.math.note).toMatch(/2,580 EUR quarter/);
+	});
+
+	it("napkin math: at-risk seniors × 50k, halved, vs the quarter; zero → 15x framing, no fake total", () => {
 		const two = buildBusinessCase({ ...base, at_risk_attrition: 2 });
 		expect(two.math.total_eur).toBe(100_000);
 		expect(two.math.discounted_eur).toBe(50_000);
