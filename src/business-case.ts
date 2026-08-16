@@ -308,7 +308,7 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 		greeting,
 		fill(pickF(E.p1, formality), { problem }),
 		pickF(E.p2, formality),
-		`${pickF(E.p3, formality)}\n${kpiList}`,
+		`${fill(pickF(E.p3, formality), { problem })}\n${kpiList}`,
 		pickF(E.p4, formality),
 		firstTime ? fill(pickF(S.email.first_time, formality), { role: roleLabel }) : null,
 		atRiskLine,

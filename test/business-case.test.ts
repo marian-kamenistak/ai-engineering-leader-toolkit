@@ -154,6 +154,7 @@ describe("business case core — behaviour", () => {
 					expect(txt).not.toMatch(banned);
 					expect(txt).not.toMatch(/undefined|\[object|NaN/);
 					expect(txt).not.toMatch(/ELC Hub/);
+					expect(txt).not.toMatch(/\{\w+\}/); // every placeholder filled
 				}
 	});
 });

@@ -483,7 +483,7 @@ const CS: Strings = {
 	fallbacks: {
 		manager: "[jméno šéfa]",
 		problem: "[ta jedna věc, kterou chci vyřešit, např. predictability dodávky se drží na 60 %]",
-		decide_by: "[pátek]",
+		decide_by: "[pátku]",
 		your_name: "[tvoje jméno]",
 		company: "firmu",
 	},
