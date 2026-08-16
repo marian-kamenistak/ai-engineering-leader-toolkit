@@ -28,6 +28,8 @@ https://www.marian.coach/mcp
 | `build_mentoring_business_case`               | How do I get my company to pay for mentoring? Manager email (learning-budget or no-budget version), Slack short, talking points, a one-pager for finance, objections answered, napkin math — EN or CZ |
 | `estimate_coaching_cost`                | How much should a coach cost me? Fair per-session range + program total by coaching type, role, territory, and coach seniority — ICF 2025 + CEE market anchors, with red flags       |
 
+The business-case tool also has a plain JSON surface for the marian.coach pricing-page wizard, same core, same output: `GET https://www.marian.coach/mcp/business-case?lang=en|cs` returns the wizard options, `POST` with the tool's input JSON returns the structured case.
+
 ## Connect
 
 **Claude Code**
