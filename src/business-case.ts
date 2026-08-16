@@ -1,9 +1,28 @@
 /**
- * Mentoring business case builder — the math a manager needs to approve
- * a mentoring budget, plus a forwardable email draft.
- * Same engagement terms as the live page at
- * https://www.marian.coach/get-your-company-to-pay-for-mentoring/
+ * Mentoring business case v2 — the one core behind three surfaces:
+ * the MCP tool `build_mentoring_business_case`, the JSON route
+ * `/mcp/business-case` the marian.coach wizard calls, and the public
+ * `convince-your-manager` skill (which calls the tool when connected).
+ *
+ * Returns structured data: a forwardable email (learning-budget or
+ * no-budget-line version), a Slack-length version, five talking points,
+ * a manager-facing one-pager, the usual objections answered, napkin math,
+ * and the evidence list. English or Czech (tykání / vykání).
+ *
+ * Hard rules: list prices only (430 / 2,580 EUR); invoiced by Marian
+ * Kamenistak, sole trader; nothing invented — a missing input renders as
+ * a visible [bracket]. Same terms as https://www.marian.coach/pricing/.
  */
+
+import { z } from "zod";
+import { STRINGS, type F, type Strings } from "./business-case.i18n";
+
+// ─── Types ────────────────────────────────────────────────────────────────
+
+export type Lang = "en" | "cs";
+export type Situation = "ld_budget" | "no_budget";
+export type Formality = "informal" | "formal";
+export type Alternative = "conference" | "course" | "internal_coach";
 
 export const BUSINESS_CASE_ROLES = [
 	"engineering_manager",
@@ -12,184 +31,448 @@ export const BUSINESS_CASE_ROLES = [
 	"staff_engineer",
 	"product_manager",
 ] as const;
-
 export type BusinessCaseRole = (typeof BUSINESS_CASE_ROLES)[number];
 
-export const ROLE_LABELS: Record<BusinessCaseRole, string> = {
-	engineering_manager: "Engineering Manager",
-	director: "Director of Engineering",
-	vp_engineering: "VP of Engineering",
-	staff_engineer: "Staff Engineer",
-	product_manager: "Product Manager",
-};
-
-// 6 sessions x 430 EUR list rate (companies pay the same), without VAT, invoiced by Marian
-// Kamenistak, sole trader. Re-gate 2026-08-09: 2,166 (361/session) exists only via the AI
-// wizard at marian.coach/mcp/mentoring + a booked intro — this tool quotes the list price.
-export const SESSION_PRICE_EUR = 430;
-export const PACK_SESSIONS = 6;
-export const PACK_PRICE_EUR = SESSION_PRICE_EUR * PACK_SESSIONS; // 2,580
-
-export const DEFAULT_AVG_SALARY_EUR = 100_000;
-
-// Replacing a senior costs roughly 6 months of fully-loaded salary in
-// recruiter fees plus ramp time. 40-60k EUR is the typical range.
-export const ATTRITION_COST_FACTOR = 0.5;
-
-// A 2% productivity / predictability lift across the team. Deliberately
-// conservative; most engagements target one specific problem, not vibes.
-export const TEAM_LIFT_FACTOR = 0.02;
-
-// Shipping one quarter earlier captures a quarter of the annual revenue.
-export const DELAY_DIVISOR = 4;
-
-export const KPI_SUGGESTIONS: Record<BusinessCaseRole, string[]> = {
-	engineering_manager: [
-		"Zero regretted attrition in the next 2 quarters",
-		"Planned-vs-shipped ratio up to 85%",
-		"Every underperformance case actioned within 4 weeks, not parked",
-	],
-	director: [
-		"The one stuck structural decision (team split, platform call, reorg) shipped within 6 weeks",
-		"Senior time-to-hire cut by a third",
-		"The slipping flagship feature back on its committed date",
-	],
-	vp_engineering: [
-		"The open org design decision made and communicated",
-		"Leadership bench gaps named and closed with a successor plan",
-		"Roadmap commitments holding quarter over quarter",
-	],
-	staff_engineer: [
-		"One decision doc written, circulated, and accepted",
-		"One cross-team initiative led end to end",
-		"Promotion case documented with evidence, not adjectives",
-	],
-	product_manager: [
-		"Roadmap tradeoffs defended with numbers, not seniority",
-		"Stakeholder alignment: no surprise escalations for a quarter",
-		"Discovery-to-delivery predictability measured and improving",
-	],
-};
-
-export const ENGAGEMENT_STRUCTURE = [
-	`${PACK_SESSIONS} sessions across 3 months`,
-	"KPIs on paper before session 1",
-	"Mid-point review at session 3, final review at session 6",
-	"Intro call free",
-	"Any session rated under 7/10 is not charged",
-];
+export const ROLE_LABELS: Record<BusinessCaseRole, string> = STRINGS.en.roles;
 
 export interface BusinessCaseInput {
 	role: BusinessCaseRole;
+	lang?: Lang;
+	formality?: Formality;
+	situation?: Situation;
+	first_time_in_role?: boolean;
+	your_name?: string;
+	manager_name?: string;
+	company?: string;
 	team_size?: number;
-	avg_salary_eur?: number;
 	problem?: string;
+	kpis?: string[];
+	decide_by?: string;
 	at_risk_attrition?: number;
+	alternatives?: Alternative[];
+	/** Legacy, agents only: fully-loaded annual cost per engineer (with team_size). */
+	avg_salary_eur?: number;
+	/** Legacy, agents only: annual revenue on a slipping roadmap item. */
 	delayed_revenue_eur?: number;
 }
 
-const eur = (n: number) => `${Math.round(n).toLocaleString("en-US")} EUR`;
+export interface OnePagerSection {
+	heading: string;
+	body?: string;
+	bullets?: string[];
+	table?: [string, string][];
+}
 
-const article = (noun: string) => (/^[aeiou]/i.test(noun) ? "an" : "a");
+export interface BusinessCase {
+	email: { subject: string; body: string };
+	slack_short: string;
+	talking_points: string[];
+	one_pager: { title: string; sections: OnePagerSection[] };
+	math: {
+		lines: string[];
+		total_eur: number;
+		discounted_eur: number;
+		ask_eur: number;
+		pack_price_eur: number;
+		roi_multiple: number | null;
+		note: string;
+	};
+	evidence: { claim: string; source: string; url: string }[];
+	objections: { objection: string; answer: string }[];
+	next_steps: string[];
+	engagement: string[];
+	meta: {
+		lang: Lang;
+		situation: Situation;
+		pack: "first_quarter" | "pilot_session";
+		role: BusinessCaseRole;
+		first_time: boolean;
+		at_risk: number;
+	};
+}
 
-export function buildBusinessCase(input: BusinessCaseInput): string {
-	const roleLabel = ROLE_LABELS[input.role];
-	const roleWithArticle = `${article(roleLabel)} ${roleLabel}`;
+// ─── Constants ────────────────────────────────────────────────────────────
+
+// List price. Companies pay the same. Without VAT, invoiced by Marian Kamenistak,
+// sole trader. The 2,166 (361/session) price exists only through the AI wizard at
+// marian.coach/mcp/mentoring + a booked intro — never quoted by this tool.
+export const SESSION_PRICE_EUR = 430;
+export const SINGLE_SESSION_EUR = SESSION_PRICE_EUR;
+export const PACK_SESSIONS = 6;
+export const PACK_PRICE_EUR = SESSION_PRICE_EUR * PACK_SESSIONS; // 2,580
+
+// Midpoint of the site's published 40–60k EUR replacement anchor for a senior
+// engineer; Gallup (0.5–2x salary) is the cited backing. No salary input needed.
+export const ATTRITION_REPLACEMENT_EUR = 50_000;
+
+// Legacy lines (only when an agent passes team_size + avg_salary_eur / delayed_revenue_eur).
+export const DEFAULT_AVG_SALARY_EUR = 100_000;
+export const ATTRITION_COST_FACTOR = 0.5;
+export const TEAM_LIFT_FACTOR = 0.02;
+export const DELAY_DIVISOR = 4;
+
+/** Kept for callers that imported the v1 tables. Same content as STRINGS.en.kpis. */
+export const KPI_SUGGESTIONS: Record<BusinessCaseRole, string[]> = STRINGS.en.kpis;
+export const ENGAGEMENT_STRUCTURE: string[] = STRINGS.en.engagement;
+
+// ─── Input schema (raw zod shape, shared by the MCP tool and the JSON route) ─
+
+export const BUSINESS_CASE_INPUT_SHAPE = {
+	role: z
+		.enum(BUSINESS_CASE_ROLES)
+		.describe("The mentee's role — sets KPI and example-problem suggestions"),
+	lang: z.enum(["en", "cs"]).optional().describe("Output language (default en)"),
+	formality: z
+		.enum(["informal", "formal"])
+		.optional()
+		.describe("Czech only: ty (informal, default) or Vy (formal)"),
+	situation: z
+		.enum(["ld_budget", "no_budget"])
+		.optional()
+		.describe(
+			"ld_budget = a learning/L&D budget exists (asks for the 6-session quarter, 2,580 EUR); no_budget = no budget line (asks for one 430 EUR pilot session first). Default ld_budget",
+		),
+	first_time_in_role: z
+		.boolean()
+		.optional()
+		.describe("First time in this role? Adds the first-time-manager evidence"),
+	your_name: z.string().max(80).optional().describe("The mentee's first name (signs the email)"),
+	manager_name: z.string().max(80).optional().describe("The manager's first name"),
+	company: z.string().max(120).optional().describe("Company name, for the invoice line"),
+	team_size: z
+		.number()
+		.int()
+		.min(0)
+		.max(5000)
+		.optional()
+		.describe("Team size, context for the one-pager (and the legacy team-lift line)"),
+	problem: z
+		.string()
+		.max(400)
+		.optional()
+		.describe(
+			"The ONE thing to fix in the next 90 days, in the user's words. Never invent it; leave empty to get a visible placeholder",
+		),
+	kpis: z
+		.array(z.string().max(160))
+		.max(3)
+		.optional()
+		.describe("1–3 measurable 90-day targets; default = the role's suggestions"),
+	decide_by: z
+		.string()
+		.max(60)
+		.optional()
+		.describe("Decision date, free text (e.g. 'Friday 22 Aug')"),
+	at_risk_attrition: z
+		.number()
+		.int()
+		.min(0)
+		.max(5)
+		.optional()
+		.describe("Senior people at risk of leaving (0–5). Drives the napkin math"),
+	alternatives: z
+		.array(z.enum(["conference", "course", "internal_coach"]))
+		.optional()
+		.describe("Alternatives already considered"),
+	avg_salary_eur: z
+		.number()
+		.optional()
+		.describe("Legacy: fully-loaded annual cost per engineer in EUR, only with team_size"),
+	delayed_revenue_eur: z
+		.number()
+		.optional()
+		.describe("Legacy: annual revenue attached to a slipping roadmap item, in EUR"),
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+const eur = (lang: Lang, n: number): string =>
+	lang === "cs"
+		? Math.round(n).toLocaleString("cs-CZ").replace(/ /g, " ")
+		: Math.round(n).toLocaleString("en-US");
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+const pickF = (s: F, formality: Formality): string =>
+	typeof s === "string" ? s : formality === "formal" ? s.formal : s.informal;
+
+/** Fill {placeholders}; unknown keys stay visible as [key] so nothing is silently invented. */
+const fill = (tpl: string, vars: Record<string, string | number>): string =>
+	tpl.replace(/\{(\w+)\}/g, (_, k: string) => (k in vars ? String(vars[k]) : `[${k}]`));
+
+const clean = (s?: string): string | undefined => {
+	const t = (s ?? "").trim();
+	return t.length ? t : undefined;
+};
+
+// ─── Build ────────────────────────────────────────────────────────────────
+
+export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
+	const lang: Lang = input.lang === "cs" ? "cs" : "en";
+	const S: Strings = STRINGS[lang];
+	const formality: Formality = lang === "cs" && input.formality === "formal" ? "formal" : "informal";
+	const situation: Situation = input.situation === "no_budget" ? "no_budget" : "ld_budget";
+	const role = input.role;
+	const roleLabel = S.roles[role];
+	const firstTime = input.first_time_in_role === true;
+	const atRisk = Math.max(0, Math.min(5, Math.round(input.at_risk_attrition ?? 0)));
+	const alternatives = Array.from(new Set(input.alternatives ?? [])).filter(
+		(a): a is Alternative => a === "conference" || a === "course" || a === "internal_coach",
+	);
+
+	const yourName = clean(input.your_name);
+	const managerName = clean(input.manager_name);
+	const company = clean(input.company);
+	const problemGiven = clean(input.problem);
+	const problem = problemGiven ?? S.fallbacks.problem;
+	const decideBy = clean(input.decide_by) ?? S.fallbacks.decide_by;
+	const kpisGiven = (input.kpis ?? []).map((k) => k.trim()).filter(Boolean).slice(0, 3);
+	const kpis = kpisGiven.length ? kpisGiven : S.kpis[role];
+
+	const askEur = situation === "no_budget" ? SINGLE_SESSION_EUR : PACK_PRICE_EUR;
+	const pack = situation === "no_budget" ? "pilot_session" : "first_quarter";
+
+	// ── math ──
+	const attritionValue = atRisk * ATTRITION_REPLACEMENT_EUR;
 	const teamSize = input.team_size ?? 0;
-	const avgSalary = input.avg_salary_eur ?? DEFAULT_AVG_SALARY_EUR;
-	const atRisk = input.at_risk_attrition ?? 0;
-	const delayedRevenue = input.delayed_revenue_eur ?? 0;
-	const problem =
-		input.problem ??
-		"one measurable problem you name before session 1 (e.g. delivery predictability at 60%)";
-
-	const attritionValue = atRisk * ATTRITION_COST_FACTOR * avgSalary;
-	const delayValue = delayedRevenue / DELAY_DIVISOR;
-	const liftValue = teamSize * avgSalary * TEAM_LIFT_FACTOR;
-	const total = attritionValue + delayValue + liftValue;
+	const liftValue =
+		teamSize > 0 && input.avg_salary_eur ? teamSize * input.avg_salary_eur * TEAM_LIFT_FACTOR : 0;
+	const delayValue = input.delayed_revenue_eur ? input.delayed_revenue_eur / DELAY_DIVISOR : 0;
+	const total = attritionValue + liftValue + delayValue;
 	const discounted = total / 2;
-	const roiMultiple = Math.round((discounted / PACK_PRICE_EUR) * 10) / 10;
+	const roi = total > 0 ? round1(discounted / askEur) : null;
 
 	const mathLines: string[] = [];
-	mathLines.push(
-		`- Attrition avoided: ${atRisk} senior ${atRisk === 1 ? "person" : "people"} at risk x ${eur(ATTRITION_COST_FACTOR * avgSalary)} (replacing a senior costs about 6 months of salary in recruiter fees plus ramp; 40-60k EUR is typical) = ${eur(attritionValue)}`,
+	if (atRisk > 0) {
+		mathLines.push(
+			fill(S.math.attrition, {
+				n: atRisk,
+				unit: atRisk === 1 ? S.math.person : S.math.people,
+				value: eur(lang, attritionValue),
+			}),
+		);
+	}
+	if (delayValue > 0) {
+		mathLines.push(
+			fill(S.math.delay, {
+				rev: eur(lang, input.delayed_revenue_eur ?? 0),
+				value: eur(lang, delayValue),
+			}),
+		);
+	}
+	if (liftValue > 0) {
+		mathLines.push(
+			fill(S.math.lift, {
+				team: teamSize,
+				sal: eur(lang, input.avg_salary_eur ?? DEFAULT_AVG_SALARY_EUR),
+				value: eur(lang, liftValue),
+			}),
+		);
+	}
+	if (total > 0) {
+		mathLines.push(
+			fill(S.math.cfo, {
+				discounted: eur(lang, discounted),
+				ask: eur(lang, askEur),
+				roi: String(roi),
+			}),
+		);
+	}
+	const mathNote =
+		total > 0
+			? fill(S.math.note_pos, { roi: String(roi) })
+			: fill(S.math.note_zero, { ask: eur(lang, askEur) });
+
+	// ── email ──
+	const E = S.email[situation];
+	const greeting = managerName
+		? fill(pickF(E.greeting, formality), { manager: managerName })
+		: pickF(E.greeting_fallback, formality);
+	const kpiList = kpis.map((k, i) => `${i + 1}. ${k}`).join("\n");
+	const atRiskLine =
+		atRisk === 0
+			? null
+			: fill(
+					pickF(
+						atRisk === 1 ? S.email.at_risk_1 : atRisk >= 5 ? S.email.at_risk_5 : S.email.at_risk_n,
+						formality,
+					),
+					{ n: atRisk },
+				);
+	const emailParas: (string | null)[] = [
+		greeting,
+		fill(pickF(E.p1, formality), { problem }),
+		pickF(E.p2, formality),
+		`${pickF(E.p3, formality)}\n${kpiList}`,
+		pickF(E.p4, formality),
+		firstTime ? fill(pickF(S.email.first_time, formality), { role: roleLabel }) : null,
+		atRiskLine,
+		pickF(S.email.p5, formality),
+		fill(pickF(S.email.close, formality), { decide_by: decideBy }),
+		yourName ?? S.fallbacks.your_name,
+	];
+	const emailBody = emailParas.filter((p): p is string => p !== null).join("\n\n");
+
+	// ── slack ──
+	const slack = fill(pickF(S.slack.text, formality), {
+		manager: managerName ?? S.fallbacks.manager,
+		problem,
+		budget_line: S.slack.budget_line[situation],
+		ask_line: S.slack.ask_line[situation],
+		decide_by: decideBy,
+	});
+
+	// ── talking points ──
+	const talking = [
+		fill(S.talking.t1, { problem, kpis: kpis.join("; ") }),
+		fill(S.talking.t2, { ask_line: S.slack.ask_line[situation] }),
+		S.talking.t3,
+		atRisk > 0
+			? fill(S.talking.t4_risk, { n: atRisk, ask_eur: eur(lang, askEur) })
+			: S.talking.t4_zero,
+		S.talking.t5,
+	];
+
+	// ── one-pager ──
+	const P = S.one_pager;
+	const sections: OnePagerSection[] = [
+		{ heading: P.s_problem, body: problem.charAt(0).toUpperCase() + problem.slice(1) },
+		{ heading: P.s_success, bullets: kpis },
+		{ heading: P.s_what, body: P.what_body[situation] },
+		{
+			heading: P.s_investment,
+			table: P.investment_rows[situation].map(
+				([k, v]) => [k, fill(v, { company: company ?? S.fallbacks.company })] as [string, string],
+			),
+		},
+		{ heading: P.s_measure, bullets: P.measure_bullets },
+		{ heading: P.s_risk, bullets: P.risk_bullets },
+		{ heading: P.s_budget, body: P.budget_body[situation] },
+	];
+	if (firstTime) sections.push({ heading: P.s_why_now, body: fill(P.why_now_body, { role: roleLabel }) });
+	if (alternatives.length) {
+		sections.push({
+			heading: P.s_alternatives,
+			bullets: [...alternatives.map((a) => P.alt_bullets[a]), P.alt_closing],
+		});
+	}
+	sections.push(
+		total > 0
+			? {
+					heading: P.s_math,
+					bullets: [
+						...mathLines.slice(0, -1),
+						fill(P.math_risk_closing, {
+							discounted: eur(lang, discounted),
+							ask: eur(lang, askEur),
+							roi: String(roi),
+						}),
+					],
+				}
+			: { heading: P.s_math, body: fill(P.math_zero_body, { ask: eur(lang, askEur) }) },
 	);
-	mathLines.push(
-		`- Cost of delay avoided: ${eur(delayedRevenue)} annual revenue on the slipping item / ${DELAY_DIVISOR} (shipping one quarter earlier) = ${eur(delayValue)}`,
+	sections.push(
+		{ heading: P.s_give_back, body: P.give_back_body },
+		{ heading: P.s_decision, body: fill(P.decision_body, { decide_by: decideBy }) },
 	);
-	mathLines.push(
-		`- Team lift: ${teamSize} engineers x ${eur(avgSalary)} x 2% (a deliberately conservative productivity and predictability lift) = ${eur(liftValue)}`,
-	);
+	const onePagerTitle = fill(P.title, { your_name: yourName ?? S.fallbacks.your_name, role: roleLabel });
 
-	const kpis = KPI_SUGGESTIONS[input.role];
-	const kpiBlock = kpis.map((k) => `- ${k}`).join("\n");
-	const emailKpis = kpis.map((k) => `- ${k}`).join("\n");
+	return {
+		email: { subject: E.subject, body: emailBody },
+		slack_short: slack,
+		talking_points: talking,
+		one_pager: { title: onePagerTitle, sections },
+		math: {
+			lines: mathLines,
+			total_eur: total,
+			discounted_eur: discounted,
+			ask_eur: askEur,
+			pack_price_eur: PACK_PRICE_EUR,
+			roi_multiple: roi,
+			note: mathNote,
+		},
+		evidence: S.evidence,
+		objections: S.objections.map((o) => ({
+			objection: pickF(o.objection, formality),
+			answer: pickF(o.answer, formality),
+		})),
+		next_steps: S.next_steps,
+		engagement: S.engagement,
+		meta: { lang, situation, pack, role, first_time: firstTime, at_risk: atRisk },
+	};
+}
 
-	const zeroNote =
-		total === 0
-			? "\n\nAll value lines are zero because team_size, at_risk_attrition, and delayed_revenue_eur were not provided. Add at least one to make the case concrete; the KPI and email sections below still stand."
-			: "";
+// ─── Render (plain text for the MCP tool) ─────────────────────────────────
 
-	const positiveLines = [
-		attritionValue > 0
-			? `- ${atRisk} senior ${atRisk === 1 ? "person" : "people"} with a foot out the door. Replacement cost if they leave: ${eur(attritionValue)}.`
-			: null,
-		delayValue > 0
-			? `- ${eur(delayedRevenue)} of annual revenue sits on a slipping roadmap item. Shipping one quarter earlier is worth ${eur(delayValue)}.`
-			: null,
-		liftValue > 0
-			? `- A 2% lift across ${teamSize} engineers at ${eur(avgSalary)} each is ${eur(liftValue)} per year. 2% is the conservative case.`
-			: null,
-	].filter((l): l is string => l !== null);
+export function renderReport(bc: BusinessCase): string {
+	const S = STRINGS[bc.meta.lang];
+	const R = S.report;
+	const roleLabel = S.roles[bc.meta.role];
+	const yourName = bc.one_pager.title.split(": ")[1]?.split(", ")[0] ?? S.fallbacks.your_name;
 
-	const emailStakes =
-		positiveLines.length > 0
-			? `What is at stake in our numbers:\n${positiveLines.join("\n")}\n- Total: ${eur(total)}. Cut it in half to be safe: ${eur(discounted)} against a ${eur(PACK_PRICE_EUR)} spend. That is a ${roiMultiple}x return.`
-			: `The spend is ${eur(PACK_PRICE_EUR)} total. One prevented mis-hire pays for 20 quarters of mentoring; one kept senior pays for it many times over.`;
+	const sec = (s: OnePagerSection): string => {
+		const out = [`## ${s.heading}`];
+		if (s.body) out.push(s.body);
+		if (s.bullets) out.push(...s.bullets.map((b) => `- ${b}`));
+		if (s.table) out.push(...s.table.map(([k, v]) => `- ${k}: ${v}`));
+		return out.join("\n");
+	};
 
-	return `Mentoring business case for ${roleWithArticle}
+	return [
+		`# ${fill(R.title, { your_name: yourName, role: roleLabel })}`,
+		"",
+		`${R.problem}: ${bc.one_pager.sections[0]?.body ?? ""}`,
+		"",
+		`## ${R.math}`,
+		...(bc.math.lines.length ? bc.math.lines.map((l) => `- ${l}`) : []),
+		bc.math.note,
+		"",
+		`# ${R.one_pager}`,
+		bc.one_pager.title,
+		"",
+		...bc.one_pager.sections.map(sec).flatMap((s) => [s, ""]),
+		"---",
+		"",
+		`# ${R.email}`,
+		"",
+		`${R.subject}: ${bc.email.subject}`,
+		"",
+		bc.email.body,
+		"",
+		"---",
+		"",
+		`## ${R.slack}`,
+		bc.slack_short,
+		"",
+		`## ${R.talking}`,
+		...bc.talking_points.map((t, i) => `${i + 1}. ${t}`),
+		"",
+		`## ${R.objections}`,
+		...bc.objections.flatMap((o) => [`- "${o.objection}"`, `  ${o.answer}`]),
+		"",
+		`## ${R.engagement}`,
+		...bc.engagement.map((e) => `- ${e}`),
+		"",
+		`## ${R.next_steps}`,
+		...bc.next_steps.map((n) => `- ${n}`),
+		"",
+		`## ${R.evidence}`,
+		...bc.evidence.map((e) => `- ${e.claim} (${e.source}) ${e.url}`),
+	].join("\n");
+}
 
-Problem to fix: ${problem}
+// ─── Wizard options (chips + prices for the website wizard) ───────────────
 
-The formula:
-(attrition avoided + cost of delay avoided + team lift) / 2, compared against the pack price.
-The halving is the CFO discount: assume mentoring only gets you half the value, and the case should still clear.
-
-${mathLines.join("\n")}
-
-Total value at stake: ${eur(total)}
-After the CFO discount (/2): ${eur(discounted)}
-Pack price: ${eur(PACK_PRICE_EUR)} (${PACK_SESSIONS} sessions x ${SESSION_PRICE_EUR} EUR company rate, without VAT, invoiced with PO from ELC Hub s.r.o.)
-ROI multiple: ${roiMultiple}x${zeroNote}
-
-For scale: one prevented mis-hire pays for 20 quarters of mentoring.
-
-Suggested 3-6 month KPIs for ${roleWithArticle}:
-${kpiBlock}
-
-Engagement structure:
-${ENGAGEMENT_STRUCTURE.map((s) => `- ${s}`).join("\n")}
-
----
-
-Forwardable email draft:
-
-Subject: Budget ask: leadership mentoring, 2,580 EUR, measured in 90 days
-
-Hi [manager name],
-
-I want to fix one thing this quarter: ${problem}.
-
-The ask: ${eur(PACK_PRICE_EUR)} for ${PACK_SESSIONS} mentoring sessions over 3 months with Marian Kamenistak (marian.coach, 3,400+ sessions with 300+ engineering leaders since 2019). ${SESSION_PRICE_EUR} EUR per session, company rate, without VAT, invoiced with a PO from ELC Hub s.r.o.
-
-${emailStakes}
-
-How we measure it, on paper before session 1:
-${emailKpis}
-
-Guardrails: KPIs agreed upfront, mid-point review at session 3, final review at session 6, the intro call is free, and any session rated under 7/10 is not charged.
-
-If the KPIs do not move in 90 days, we stop. Can I get a yes this week?
-
-[your name]`;
+export function wizardOptions(lang: Lang) {
+	const S = STRINGS[lang === "cs" ? "cs" : "en"];
+	return {
+		roles: BUSINESS_CASE_ROLES.map((id) => ({ id, label: S.roles[id] })),
+		problem_examples: S.problem_examples,
+		kpi_suggestions: S.kpis,
+		alternatives: (["conference", "course", "internal_coach"] as const).map((id) => ({
+			id,
+			label: S.alternatives[id],
+		})),
+		prices: { session_eur: SESSION_PRICE_EUR, pack_sessions: PACK_SESSIONS, pack_eur: PACK_PRICE_EUR },
+	};
 }
