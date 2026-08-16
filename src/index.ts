@@ -1,7 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpAgent } from "agents/mcp";
 import { z } from "zod";
-import { BUSINESS_CASE_ROLES, buildBusinessCase } from "./business-case";
+import {
+	BUSINESS_CASE_INPUT_SHAPE,
+	buildBusinessCase,
+	renderReport,
+	wizardOptions,
+	type BusinessCaseInput,
+} from "./business-case";
 import {
 	CC_COACH_LEVELS,
 	CC_ROLES,
@@ -78,6 +84,48 @@ const REPORT_OUTPUT = {
 		.string()
 		.optional()
 		.describe("Headline verdict, when the tool returns one."),
+	// Business case v2 (build_mentoring_business_case) — structured artefacts, all optional
+	// so the one schema keeps serving every tool.
+	email: z
+		.object({ subject: z.string(), body: z.string() })
+		.optional()
+		.describe("Forwardable email to the manager."),
+	slackShort: z.string().optional().describe("Slack/Teams-length version of the ask."),
+	talkingPoints: z.array(z.string()).optional().describe("Five talking points for the conversation."),
+	onePager: z
+		.object({
+			title: z.string(),
+			sections: z.array(
+				z.object({
+					heading: z.string(),
+					body: z.string().optional(),
+					bullets: z.array(z.string()).optional(),
+					table: z.array(z.tuple([z.string(), z.string()])).optional(),
+				}),
+			),
+		})
+		.optional()
+		.describe("Manager-facing one-pager, forwardable to finance."),
+	math: z
+		.object({
+			lines: z.array(z.string()),
+			totalEur: z.number(),
+			discountedEur: z.number(),
+			askEur: z.number(),
+			packPriceEur: z.number(),
+			roiMultiple: z.number().nullable(),
+			note: z.string(),
+		})
+		.optional()
+		.describe("Napkin math behind the case."),
+	objections: z
+		.array(z.object({ objection: z.string(), answer: z.string() }))
+		.optional()
+		.describe("The usual objections, answered."),
+	evidence: z
+		.array(z.object({ claim: z.string(), source: z.string(), url: z.string() }))
+		.optional()
+		.describe("Sources the case may cite."),
 };
 
 function text(
@@ -102,7 +150,7 @@ function text(
 export class EngLeadershipToolkit extends McpAgent {
 	server = new McpServer({
 		name: "eng-leadership-toolkit",
-		version: "1.4.0",
+		version: "1.5.0",
 	});
 
 	async init() {
@@ -466,43 +514,32 @@ ${EM_READINESS.firstMonths}`,
 		this.server.registerTool(
 			"build_mentoring_business_case",
 			{
-				title: "Mentoring business case & manager email builder",
+				title: "Mentoring business case: manager email, one-pager, objections",
 				annotations: { ...READ_ONLY },
 				outputSchema: REPORT_OUTPUT,
 				description:
-					"Build the business case to get your company to pay for leadership mentoring or coaching: computes the ROI in EUR (money saved + cost of delay avoided + missed opportunity + roadmap slippage avoided), suggests 3-6 month KPIs, and drafts a forwardable approval email for your manager. Based on 3,400+ mentoring sessions at marian.coach.",
-				inputSchema: {
-					role: z
-						.enum(BUSINESS_CASE_ROLES)
-						.describe("The mentee's role — sets the suggested KPIs"),
-					team_size: z
-						.number()
-						.optional()
-						.describe("Number of engineers in the team/org affected"),
-					avg_salary_eur: z
-						.number()
-						.optional()
-						.describe(
-							"Average fully-loaded annual cost per engineer in EUR (default 100000)",
-						),
-					problem: z
-						.string()
-						.optional()
-						.describe('The one problem to fix, e.g. "delivery predictability at 60%"'),
-					at_risk_attrition: z
-						.number()
-						.optional()
-						.describe("Senior people with a foot out the door (default 0)"),
-					delayed_revenue_eur: z
-						.number()
-						.optional()
-						.describe(
-							"Annual revenue attached to a slipping roadmap item, in EUR (default 0)",
-						),
-				},
+					"Build the case that gets your company to pay for leadership mentoring: a forwardable email to your manager (learning-budget or no-budget-line version), a Slack-length version, five talking points, a manager-facing one-pager for finance, answers to the five usual objections, and napkin math (senior people at risk x replacement cost vs the 2,580 EUR quarter or a 430 EUR pilot session). English or Czech. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,400+ mentoring sessions at marian.coach.",
+				inputSchema: BUSINESS_CASE_INPUT_SHAPE,
 			},
 			async (input) => {
-				return text(buildBusinessCase(input), "/get-your-company-to-pay-for-mentoring/");
+				const bc = buildBusinessCase(input as BusinessCaseInput);
+				return text(renderReport(bc), "/pricing/#business-case", {
+					email: bc.email,
+					slackShort: bc.slack_short,
+					talkingPoints: bc.talking_points,
+					onePager: bc.one_pager,
+					math: {
+						lines: bc.math.lines,
+						totalEur: bc.math.total_eur,
+						discountedEur: bc.math.discounted_eur,
+						askEur: bc.math.ask_eur,
+						packPriceEur: bc.math.pack_price_eur,
+						roiMultiple: bc.math.roi_multiple,
+						note: bc.math.note,
+					},
+					objections: bc.objections,
+					evidence: bc.evidence,
+				});
 			},
 		);
 	}
@@ -560,12 +597,12 @@ const TOOL_DOCS: ToolDoc[] = [
 		name: "build_mentoring_business_case",
 		question: "How do I get my company to pay for mentoring?",
 		description:
-			"ROI math in EUR (attrition avoided, cost of delay, team lift) vs the 2,580 EUR pack (2,166 through the AI wizard at /mcp/mentoring), role-specific 90-day KPIs, and a forwardable approval email for your manager",
+			"Manager email (learning-budget or no-budget version), Slack short, five talking points, a one-pager for finance, the five usual objections answered, napkin math vs the 2,580 EUR quarter or a 430 EUR pilot session — English or Czech",
 	},
 ];
 
 export default {
-	fetch(request: Request, env: Env, ctx: ExecutionContext) {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url);
 
 		if (url.pathname === "/mcp" || url.pathname === "/mcp/") {
@@ -598,6 +635,55 @@ export default {
 				return new Response(request.method === "HEAD" ? null : docsHtml(TOOL_DOCS), { headers });
 			}
 			return EngLeadershipToolkit.serve("/mcp").fetch(request, env, ctx);
+		}
+
+		// JSON surface for the marian.coach business-case wizard (same core as the MCP tool).
+		// GET  ?lang=en|cs -> wizard options (roles, example problems, KPI chips, alternatives, prices)
+		// POST {input}     -> BusinessCase JSON (validated with the tool's own schema)
+		if (url.pathname === "/mcp/business-case" || url.pathname === "/mcp/business-case/") {
+			const origin = request.headers.get("origin") ?? "";
+			const allowed = ["https://www.marian.coach", "http://localhost:4321"];
+			const cors = {
+				"access-control-allow-origin": allowed.includes(origin) ? origin : allowed[0],
+				"access-control-allow-methods": "GET, POST, OPTIONS",
+				"access-control-allow-headers": "content-type",
+				vary: "origin",
+			};
+			if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+			if (request.method === "GET") {
+				const lang = url.searchParams.get("lang") === "cs" ? "cs" : "en";
+				return Response.json(wizardOptions(lang), {
+					headers: { ...cors, "cache-control": "public, max-age=3600" },
+				});
+			}
+			if (request.method === "POST") {
+				if (Number(request.headers.get("content-length") ?? 0) > 8192) {
+					return Response.json({ error: "too_large" }, { status: 413, headers: cors });
+				}
+				let raw: unknown;
+				try {
+					raw = await request.json();
+				} catch {
+					return Response.json({ error: "invalid_json" }, { status: 400, headers: cors });
+				}
+				const parsed = z.object(BUSINESS_CASE_INPUT_SHAPE).safeParse(raw);
+				if (!parsed.success) {
+					return Response.json(
+						{
+							error: "invalid_input",
+							issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+						},
+						{ status: 400, headers: cors },
+					);
+				}
+				return Response.json(buildBusinessCase(parsed.data as BusinessCaseInput), {
+					headers: { ...cors, "cache-control": "no-store" },
+				});
+			}
+			return new Response("Method not allowed", {
+				status: 405,
+				headers: { ...cors, allow: "GET, POST, OPTIONS" },
+			});
 		}
 
 		return new Response("Not found. MCP endpoint: https://www.marian.coach/mcp", {

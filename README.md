@@ -25,7 +25,7 @@ https://www.marian.coach/mcp
 | `choose_mentor_coach_or_advisor`        | Mentor, coach, or advisor? All three compared + a three-question self-test                                                                                                           |
 | `get_one_on_one_playbook`               | How do I run this 1:1? Real session templates: first session, underperformance, promotion to EM, better 1:1s, career move                                                            |
 | `get_first_time_manager_guidance`       | I'm a new EM, now what? The responsibility triangle, six failure modes, readiness self-check                                                                                         |
-| `build_mentoring_business_case`               | How do I get my company to pay for mentoring? ROI math in EUR, role-specific 90-day KPIs, and a forwardable approval email for your manager                                          |
+| `build_mentoring_business_case`               | How do I get my company to pay for mentoring? Manager email (learning-budget or no-budget version), Slack short, talking points, a one-pager for finance, objections answered, napkin math — EN or CZ |
 | `estimate_coaching_cost`                | How much should a coach cost me? Fair per-session range + program total by coaching type, role, territory, and coach seniority — ICF 2025 + CEE market anchors, with red flags       |
 
 ## Connect
