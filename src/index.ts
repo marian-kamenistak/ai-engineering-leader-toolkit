@@ -2,6 +2,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpAgent } from "agents/mcp";
 import { z } from "zod";
 import {
+	geoFromRequest,
+	instrumentMcpUsage,
+	type McpGeo,
+	type McpUsageConfig,
+	type McpUsageEnv,
+} from "./mcp-usage";
+import {
 	BUSINESS_CASE_INPUT_SHAPE,
 	buildBusinessCase,
 	renderReport,
@@ -164,13 +171,34 @@ function text(
 	};
 }
 
-export class EngLeadershipToolkit extends McpAgent {
+/** Shared across this Worker's MCP surface — see src/mcp-usage.ts for why both sinks hang
+ *  off one hook. The PostHog key is the marian.coach project (same one the site's own
+ *  analytics uses), so MCP tool calls and `?ref=mcp` web traffic land in one funnel. */
+const USAGE_CONFIG: McpUsageConfig = {
+	serverName: "eng-leadership-toolkit",
+	domain: "marian.coach",
+	posthogKey: "phc_xEinqUjuFui3wB6suwDFAMjQkF9g3G6GcrdqsZQ98dCW",
+};
+
+export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 	server = new McpServer({
 		name: "eng-leadership-toolkit",
 		version: "1.6.0",
 	});
 
 	async init() {
+		// Before tool registration: instrument() proxies _registeredTools so later
+		// registrations are wrapped too, but wiring it first keeps the order obvious.
+		instrumentMcpUsage({
+			server: this.server,
+			config: USAGE_CONFIG,
+			env: this.env as McpUsageEnv,
+			// Geo rides in on ctx.props from the fetch handler — request.cf is an edge-request
+			// property and is long gone by the time a tool handler runs inside the DO.
+			geo: this.props ?? {},
+			waitUntil: (p) => this.ctx.waitUntil(p),
+		});
+
 		this.server.registerTool(
 			"calculate_developer_value",
 			{
@@ -653,6 +681,9 @@ export default {
 				};
 				return new Response(request.method === "HEAD" ? null : docsHtml(TOOL_DOCS), { headers });
 			}
+			// Hand the edge request's geography to the Durable Object. `request.cf` only
+			// exists out here; McpAgent forwards ctx.props through to `this.props`.
+			(ctx as ExecutionContext & { props?: McpGeo }).props = geoFromRequest(request);
 			return EngLeadershipToolkit.serve("/mcp").fetch(request, env, ctx);
 		}
 
