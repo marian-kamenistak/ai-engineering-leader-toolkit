@@ -13,7 +13,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@posthog/mcp": "0.11.7",
     "agents": "^0.17.1",
+    "posthog-node": "5.51.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
