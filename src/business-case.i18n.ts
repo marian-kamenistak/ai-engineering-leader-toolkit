@@ -5,7 +5,7 @@
  * Rules baked in: one proof number in the email (3,400+ sessions), no invented
  * specifics (a missing input renders as a visible [bracket]), the invoicing
  * line names Marian Kamenistak as a sole trader (never ELC Hub s.r.o.), list
- * prices only (430 / 2,580 EUR — the 361/2,166 AI-channel price never appears here).
+ * prices only (395 EUR/session, 1,975 EUR quarter — the 1,778 AI-door price never appears here).
  * Czech: diacritics (web copy), tykání by default, `formal` = vykání; sentences
  * avoid gendered past-tense forms so they read right for anyone.
  */
@@ -181,20 +181,20 @@ const EN: Strings = {
 	},
 	email: {
 		ld_budget: {
-			subject: "Learning budget request: leadership mentoring, 2,580 EUR, reviewed at 90 days",
+			subject: "Learning budget request: leadership mentoring, 1,975 EUR, reviewed at 90 days",
 			greeting: "Hi {manager},",
 			greeting_fallback: "Hi [manager's name],",
 			p1: "I want to fix one thing in the next 90 days: {problem}. I'd like to use my learning budget on it.",
-			p2: "The ask: 6 mentoring sessions over 3 months with Marian Kamenistak (marian.coach), an engineering leader who has run 3,400+ sessions with people in my role. 6 x 430 EUR = 2,580 EUR without VAT, invoiced to us by him as a sole trader, our PO number on the invoice.",
+			p2: "The ask: 6 mentoring sessions over 3 months with Marian Kamenistak (marian.coach), an engineering leader who has run 3,400+ sessions with people in my role. 6 sessions, 5 paid + 1 free: 5 x 395 EUR = 1,975 EUR without VAT, invoiced to us by him as a sole trader, our PO number on the invoice.",
 			p3: "What you'd see by session 6:",
 			p4: "We put these on paper before session 1 and review them together at session 3 and session 6. The intro call is free, any session I rate under 7/10 isn't charged, and if the KPIs don't move in 90 days we stop.",
 		},
 		no_budget: {
-			subject: "Budget ask: one 430 EUR mentoring session as a pilot, then we decide",
+			subject: "Budget ask: one 395 EUR mentoring session as a pilot, then we decide",
 			greeting: "Hi {manager},",
 			greeting_fallback: "Hi [manager's name],",
 			p1: "I want to fix one thing in the next 90 days: {problem}. I'd rather test outside help on it before asking for a real budget, so this is a small ask.",
-			p2: "The ask: one 60-minute session with Marian Kamenistak (marian.coach), an engineering leader who has run 3,400+ sessions with people in my role. 430 EUR without VAT, invoiced to us by him as a sole trader, our PO number on the invoice. If it's useful, the session counts toward a 6-session quarter (2,580 EUR) when I continue within 30 days. If it isn't, we've spent 430 EUR and I stop bringing it up.",
+			p2: "The ask: one 60-minute session with Marian Kamenistak (marian.coach), an engineering leader who has run 3,400+ sessions with people in my role. 395 EUR without VAT, invoiced to us by him as a sole trader, our PO number on the invoice. If it's useful, the session counts toward the 6-session quarter (5 paid + 1 free, 1,975 EUR) when I continue within 30 days. If it isn't, we've spent 395 EUR and I stop bringing it up.",
 			p3: "What I'd bring back from the pilot: a written plan for {problem}, with the targets for the next 90 days:",
 			p4: "The intro call is free and any session I rate under 7/10 isn't charged.",
 		},
@@ -212,8 +212,8 @@ const EN: Strings = {
 	slack: {
 		text: "{manager}, quick one. I want to fix one thing in the next 90 days: {problem}. I'd like to use {budget_line} for 1:1 mentoring with Marian Kamenistak (marian.coach): {ask_line}. Targets on paper before session 1, review at 3 and 6, any session I rate under 7/10 isn't charged. Sending you a one-pager with the numbers. Ok to decide by {decide_by}?",
 		ask_line: {
-			ld_budget: "6 sessions over 3 months, 2,580 EUR",
-			no_budget: "one 430 EUR session first, then we decide",
+			ld_budget: "6 sessions over 3 months (5 paid + 1 free), 1,975 EUR",
+			no_budget: "one 395 EUR session first, then we decide",
 		},
 		budget_line: { ld_budget: "my learning budget", no_budget: "a small pilot budget" },
 	},
@@ -224,7 +224,7 @@ const EN: Strings = {
 		t4_risk:
 			"Money: replacing one of the {n} seniors we might lose costs 40 to 60k EUR. The full quarter is {pack} EUR.",
 		t4_zero:
-			"Money: one prevented departure or one quarter of roadmap slip pays for it 15 times over.",
+			"Money: one prevented departure or one quarter of roadmap slip pays for it 20 times over.",
 		t5: "I'll write up what I learn for the team, and the invoice goes to us with our PO number.",
 	},
 	one_pager: {
@@ -241,14 +241,14 @@ const EN: Strings = {
 		s_investment: "Investment",
 		investment_rows: {
 			ld_budget: [
-				["6 sessions x 430 EUR", "2,580 EUR without VAT"],
+				["6 sessions, 5 paid + 1 free, 395 EUR per paid session", "1,975 EUR without VAT"],
 				["Intro call", "free"],
 				["Invoiced to", "{company} by Marian Kamenistak (sole trader), PO number on the invoice"],
 				["Payment", "on invoice"],
 			],
 			no_budget: [
-				["Pilot: 1 session", "430 EUR without VAT"],
-				["If continued within 30 days", "counts toward the 6-session quarter, 2,580 EUR total"],
+				["Pilot: 1 session", "395 EUR without VAT"],
+				["If continued within 30 days", "counts toward the 6-session quarter (5 paid + 1 free), 1,975 EUR total"],
 				["Intro call", "free"],
 				["Invoiced to", "{company} by Marian Kamenistak (sole trader), PO number on the invoice"],
 				["Payment", "on invoice"],
@@ -288,7 +288,7 @@ const EN: Strings = {
 		math_risk_closing:
 			"Halved to be safe: {discounted} EUR against the {pack} EUR quarter = {roi}x.",
 		math_zero_body:
-			"Replacing one senior engineer costs 40 to 60k EUR (Gallup: one-half to two times salary). The quarter costs {pack} EUR. One prevented departure or one quarter of roadmap slip pays for it 15 times over.",
+			"Replacing one senior engineer costs 40 to 60k EUR (Gallup: one-half to two times salary). The quarter costs {pack} EUR. One prevented departure or one quarter of roadmap slip pays for it 20 times over.",
 		s_give_back: "What I give back",
 		give_back_body: "A written summary for the team after session 6.",
 		s_decision: "Decision requested by",
@@ -299,7 +299,7 @@ const EN: Strings = {
 		{
 			objection: "There's no budget for this.",
 			answer:
-				"Most companies keep an L&D or conference line per person; this is what it's for. If ours is spent, I can start with one 430 EUR session and we decide after, or we split it across two quarters.",
+				"Most companies keep an L&D or conference line per person; this is what it's for. If ours is spent, I can start with one 395 EUR session and we decide after, or we split it across two quarters.",
 		},
 		{
 			objection: "Why not our internal coach or a senior colleague?",
@@ -377,13 +377,13 @@ const EN: Strings = {
 			role: "Engineering Manager, team of 8",
 			setup: "Fully loaded team cost around 800,000 EUR a year. One senior engineer has a foot out the door and delivery predictability sits near 60%.",
 			kpis: "Regretted attrition zero, planned-vs-shipped from 60% to 85%, the open underperformance case actioned within 4 weeks.",
-			math: "Counting only the retention line: replacing that senior costs 40 to 60k EUR, the pack costs 2,580 EUR. One prevented departure pays for the mentoring 15 times over.",
+			math: "Counting only the retention line: replacing that senior costs 40 to 60k EUR, the pack costs 1,975 EUR. One prevented departure pays for the mentoring 20 times over.",
 		},
 		{
 			role: "Director, 3 teams, 24 engineers",
 			setup: "A reorg decision has been stuck for two quarters, and the flagship feature with roughly 300,000 EUR of annual revenue attached is slipping with it.",
 			kpis: "Reorg decided and shipped within 6 weeks, the feature back on its committed date, both open senior roles closed.",
-			math: "Counting only cost of delay: shipping one quarter earlier on a 300,000 EUR revenue line is worth about 75,000 EUR. Halved for CFO skepticism, that is 37,000 against 2,580. Still 14x.",
+			math: "Counting only cost of delay: shipping one quarter earlier on a 300,000 EUR revenue line is worth about 75,000 EUR. Halved for CFO skepticism, that is 37,000 against 1,975. Still 18x.",
 		},
 		{
 			role: "Staff Engineer",
@@ -402,7 +402,7 @@ const EN: Strings = {
 		lift: "Team lift: {team} engineers x {sal} EUR x 2% (a deliberately conservative lift) = {value} EUR",
 		cfo: "Halved to be safe (the CFO discount): {discounted} EUR against the {pack} EUR quarter = {roi}x",
 		note_zero:
-			"No at-risk seniors given, so no total is claimed. Replacing one senior costs 40 to 60k EUR; against the {pack} EUR quarter one prevented departure pays for it 15 times over.",
+			"No at-risk seniors given, so no total is claimed. Replacing one senior costs 40 to 60k EUR; against the {pack} EUR quarter one prevented departure pays for it 20 times over.",
 		note_pos: "After halving, the case clears the ask {roi} times over.",
 	},
 	report: {
@@ -490,20 +490,20 @@ const CS: Strings = {
 	email: {
 		ld_budget: {
 			subject:
-				"Žádost o rozpočet na rozvoj: leadership mentoring, 2 580 EUR, vyhodnocení po 90 dnech",
+				"Žádost o rozpočet na rozvoj: leadership mentoring, 1 975 EUR, vyhodnocení po 90 dnech",
 			greeting: { informal: "{manager} ahoj,", formal: "Dobrý den, {manager}," },
 			greeting_fallback: { informal: "Ahoj,", formal: "Dobrý den," },
 			p1: "Chci v příštích 90 dnech vyřešit jednu konkrétní věc: {problem}. Chci na to použít svůj rozpočet na rozvoj.",
-			p2: "O co jde: 6 mentoringových sessions během 3 měsíců s Marianem Kamenistakem (marian.coach), engineering leaderem, který má za sebou 3 400+ sessions s lidmi v mé roli. 6 x 430 EUR = 2 580 EUR bez DPH, fakturuje nám jako OSVČ, na faktuře bude naše číslo objednávky.",
+			p2: "O co jde: 6 mentoringových sessions během 3 měsíců s Marianem Kamenistakem (marian.coach), engineering leaderem, který má za sebou 3 400+ sessions s lidmi v mé roli. 6 sessions, 5 placených + 1 zdarma: 5 x 395 EUR = 1 975 EUR bez DPH, fakturuje nám jako OSVČ, na faktuře bude naše číslo objednávky.",
 			p3: { informal: "Co uvidíš do šesté session:", formal: "Co uvidíte do šesté session:" },
 			p4: "Cíle dáme na papír před první session a společně je projdeme po třetí a po šesté. Intro call je zdarma, session, kterou ohodnotím pod 7/10, se neplatí, a když se KPI za 90 dní nepohnou, končíme.",
 		},
 		no_budget: {
-			subject: "Žádost o rozpočet: jedna mentoringová session za 430 EUR jako pilot, pak se rozhodneme",
+			subject: "Žádost o rozpočet: jedna mentoringová session za 395 EUR jako pilot, pak se rozhodneme",
 			greeting: { informal: "{manager} ahoj,", formal: "Dobrý den, {manager}," },
 			greeting_fallback: { informal: "Ahoj,", formal: "Dobrý den," },
 			p1: "Chci v příštích 90 dnech vyřešit jednu konkrétní věc: {problem}. Než budu žádat o skutečný rozpočet, chci si pomoc zvenku nejdřív vyzkoušet, takže je to malá žádost.",
-			p2: "O co jde: jedna 60minutová session s Marianem Kamenistakem (marian.coach), engineering leaderem, který má za sebou 3 400+ sessions s lidmi v mé roli. 430 EUR bez DPH, fakturuje nám jako OSVČ, na faktuře bude naše číslo objednávky. Když to bude užitečné, session se započítá do kvartálu o 6 sessions (2 580 EUR), pokud budu pokračovat do 30 dnů. Když ne, stálo nás to 430 EUR a už to nebudu otvírat.",
+			p2: "O co jde: jedna 60minutová session s Marianem Kamenistakem (marian.coach), engineering leaderem, který má za sebou 3 400+ sessions s lidmi v mé roli. 395 EUR bez DPH, fakturuje nám jako OSVČ, na faktuře bude naše číslo objednávky. Když to bude užitečné, session se započítá do kvartálu o 6 sessions (5 placených + 1 zdarma, 1 975 EUR), pokud budu pokračovat do 30 dnů. Když ne, stálo nás to 395 EUR a už to nebudu otvírat.",
 			p3: "Co z pilotu přinesu: písemný plán na {problem} s cíli na příštích 90 dní:",
 			p4: "Intro call je zdarma a session, kterou ohodnotím pod 7/10, se neplatí.",
 		},
@@ -526,8 +526,8 @@ const CS: Strings = {
 				"{manager}, rychlá věc. Chci v příštích 90 dnech vyřešit jednu věc: {problem}. Chci na to použít {budget_line} na 1:1 mentoring s Marianem Kamenistakem (marian.coach): {ask_line}. Cíle na papíře před první session, review po třetí a šesté, session pod 7/10 se neplatí. Pošlu Vám jednostránkový podklad s čísly. Rozhodneme do {decide_by}?",
 		},
 		ask_line: {
-			ld_budget: "6 sessions během 3 měsíců, 2 580 EUR",
-			no_budget: "nejdřív jedna session za 430 EUR, pak se rozhodneme",
+			ld_budget: "6 sessions během 3 měsíců (5 placených + 1 zdarma), 1 975 EUR",
+			no_budget: "nejdřív jedna session za 395 EUR, pak se rozhodneme",
 		},
 		budget_line: { ld_budget: "svůj rozpočet na rozvoj", no_budget: "malý pilotní rozpočet" },
 	},
@@ -538,7 +538,7 @@ const CS: Strings = {
 		t4_risk:
 			"Peníze: nahradit jednoho z {n} seniorů, které můžeme ztratit, stojí 40 až 60 tisíc EUR. Celý kvartál je {pack} EUR.",
 		t4_zero:
-			"Peníze: jeden odchod, kterému předejdeme, nebo jeden kvartál skluzu na roadmapě to zaplatí patnáctkrát.",
+			"Peníze: jeden odchod, kterému předejdeme, nebo jeden kvartál skluzu na roadmapě to zaplatí dvacetkrát.",
 		t5: "Co se naučím, sepíšu pro tým, a faktura jde na firmu s naším číslem objednávky.",
 	},
 	one_pager: {
@@ -555,14 +555,14 @@ const CS: Strings = {
 		s_investment: "Investice",
 		investment_rows: {
 			ld_budget: [
-				["6 sessions x 430 EUR", "2 580 EUR bez DPH"],
+				["6 sessions, 5 placených + 1 zdarma, 395 EUR za placenou session", "1 975 EUR bez DPH"],
 				["Intro call", "zdarma"],
 				["Faktura na", "{company}, vystaví Marian Kamenistak (OSVČ), číslo objednávky na faktuře"],
 				["Platba", "na fakturu"],
 			],
 			no_budget: [
-				["Pilot: 1 session", "430 EUR bez DPH"],
-				["Při pokračování do 30 dnů", "započítá se do kvartálu o 6 sessions, celkem 2 580 EUR"],
+				["Pilot: 1 session", "395 EUR bez DPH"],
+				["Při pokračování do 30 dnů", "započítá se do kvartálu o 6 sessions (5 placených + 1 zdarma), celkem 1 975 EUR"],
 				["Intro call", "zdarma"],
 				["Faktura na", "{company}, vystaví Marian Kamenistak (OSVČ), číslo objednávky na faktuře"],
 				["Platba", "na fakturu"],
@@ -602,7 +602,7 @@ const CS: Strings = {
 		math_risk_closing:
 			"Pro jistotu půlka: {discounted} EUR proti kvartálu za {pack} EUR = {roi}x.",
 		math_zero_body:
-			"Nahradit jednoho senior engineera stojí 40 až 60 tisíc EUR (Gallup: půl až dvojnásobek platu). Kvartál stojí {pack} EUR. Jeden odchod, kterému předejdeme, nebo jeden kvartál skluzu to zaplatí patnáctkrát.",
+			"Nahradit jednoho senior engineera stojí 40 až 60 tisíc EUR (Gallup: půl až dvojnásobek platu). Kvartál stojí {pack} EUR. Jeden odchod, kterému předejdeme, nebo jeden kvartál skluzu to zaplatí dvacetkrát.",
 		s_give_back: "Co dám zpět",
 		give_back_body: "Písemné shrnutí pro tým po šesté session.",
 		s_decision: "Rozhodnutí potřebuji do",
@@ -612,7 +612,7 @@ const CS: Strings = {
 		{
 			objection: "Na tohle nemáme rozpočet.",
 			answer:
-				"Většina firem má na osobu položku L&D nebo konference; přesně na tohle je. Když je naše vyčerpaná, můžu začít jednou session za 430 EUR a rozhodneme se potom, nebo to rozdělíme do dvou kvartálů.",
+				"Většina firem má na osobu položku L&D nebo konference; přesně na tohle je. Když je naše vyčerpaná, můžu začít jednou session za 395 EUR a rozhodneme se potom, nebo to rozdělíme do dvou kvartálů.",
 		},
 		{
 			objection: "Proč ne náš interní kouč nebo zkušenější kolega?",
@@ -690,13 +690,13 @@ const CS: Strings = {
 			role: "Engineering Manager, tým 8 lidí",
 			setup: "Plně nákladový tým kolem 800 000 EUR ročně. Jeden senior má nohu ze dveří a predikovatelnost dodávek se drží kolem 60 %.",
 			kpis: "Nulová nechtěná fluktuace, plán vs. dodáno z 60 % na 85 %, otevřený případ podvýkonu vyřešený do 4 týdnů.",
-			math: "Jen retenční řádek: nahradit toho seniora stojí 40 až 60 tisíc EUR, balíček stojí 2 580 EUR. Jeden odvrácený odchod zaplatí mentoring patnáctkrát.",
+			math: "Jen retenční řádek: nahradit toho seniora stojí 40 až 60 tisíc EUR, balíček stojí 1 975 EUR. Jeden odvrácený odchod zaplatí mentoring dvacetkrát.",
 		},
 		{
 			role: "Director, 3 týmy, 24 engineerů",
 			setup: "Rozhodnutí o reorganizaci leží dva kvartály a s ním klouže i vlajková funkce, na které visí zhruba 300 000 EUR ročních tržeb.",
 			kpis: "Reorganizace rozhodnutá a nasazená do 6 týdnů, funkce zpět na slíbeném datu, obě otevřené seniorní pozice zavřené.",
-			math: "Jen cena zpoždění: dodat o kvartál dřív na tržbách 300 000 EUR má hodnotu asi 75 000 EUR. Po vydělení dvěma kvůli skepsi CFO je to 37 000 proti 2 580. Pořád 14x.",
+			math: "Jen cena zpoždění: dodat o kvartál dřív na tržbách 300 000 EUR má hodnotu asi 75 000 EUR. Po vydělení dvěma kvůli skepsi CFO je to 37 000 proti 1 975. Pořád 18x.",
 		},
 		{
 			role: "Staff Engineer",
@@ -715,7 +715,7 @@ const CS: Strings = {
 		lift: "Zlepšení týmu: {team} engineerů x {sal} EUR x 2 % (záměrně konzervativní odhad) = {value} EUR",
 		cfo: "Pro jistotu půlka (CFO diskont): {discounted} EUR proti kvartálu za {pack} EUR = {roi}x",
 		note_zero:
-			"Bez zadaných seniorů v riziku nic nenárokujeme. Nahradit jednoho seniora stojí 40 až 60 tisíc EUR; proti kvartálu za {pack} EUR to jeden odvrácený odchod zaplatí patnáctkrát.",
+			"Bez zadaných seniorů v riziku nic nenárokujeme. Nahradit jednoho seniora stojí 40 až 60 tisíc EUR; proti kvartálu za {pack} EUR to jeden odvrácený odchod zaplatí dvacetkrát.",
 		note_pos: "Po půlení případ pokryje žádanou částku {roi}x.",
 	},
 	report: {

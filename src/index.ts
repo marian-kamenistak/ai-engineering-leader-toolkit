@@ -563,7 +563,7 @@ ${EM_READINESS.firstMonths}`,
 				annotations: { ...READ_ONLY },
 				outputSchema: REPORT_OUTPUT,
 				description:
-					"Build the case that gets your company to pay for leadership mentoring — everything on marian.coach/get-your-company-to-pay-for-mentoring/, personalised: the four-line value formula and the count-then-halve CFO rule, three worked examples (EM, Director, Staff Engineer), napkin math (senior people at risk x replacement cost vs the 2,580 EUR quarter or a 430 EUR pilot session), a forwardable email to your manager in a learning-budget or a no-budget-line version, a Slack-length version, five talking points, a manager-facing one-pager for finance, and answers to the five usual objections. English or Czech, tykani or vykani. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,400+ mentoring sessions at marian.coach.",
+					"Build the case that gets your company to pay for leadership mentoring — everything on marian.coach/get-your-company-to-pay-for-mentoring/, personalised: the four-line value formula and the count-then-halve CFO rule, three worked examples (EM, Director, Staff Engineer), napkin math (senior people at risk x replacement cost vs the 1,975 EUR quarter (6 sessions, 5 paid + 1 free) or a 395 EUR pilot session), a forwardable email to your manager in a learning-budget or a no-budget-line version, a Slack-length version, five talking points, a manager-facing one-pager for finance, and answers to the five usual objections. English or Czech, tykani or vykani. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,400+ mentoring sessions at marian.coach.",
 				inputSchema: BUSINESS_CASE_INPUT_SHAPE,
 			},
 			async (input) => {
@@ -644,7 +644,7 @@ const TOOL_DOCS: ToolDoc[] = [
 		name: "build_mentoring_business_case",
 		question: "How do I get my company to pay for mentoring?",
 		description:
-			"The whole get-your-company-to-pay page, personalised: the four-line value formula, three worked examples, napkin math vs the 2,580 EUR quarter or a 430 EUR pilot session, a manager email (learning-budget or no-budget version), Slack short, five talking points, a one-pager for finance, and the five usual objections answered — English or Czech",
+			"The whole get-your-company-to-pay page, personalised: the four-line value formula, three worked examples, napkin math vs the 1,975 EUR quarter (6 sessions, 5 paid + 1 free) or a 395 EUR pilot session, a manager email (learning-budget or no-budget version), Slack short, five talking points, a one-pager for finance, and the five usual objections answered — English or Czech",
 	},
 ];
 

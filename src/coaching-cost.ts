@@ -117,7 +117,7 @@ export function estimateCoachingCost(input: {
 	lines.push(
 		``,
 		`Sources: ICF Global Coaching Study 2025 (234 USD/hr global avg, 297 NA), Tandem Coach 2026 credential bands, Czech market survey 2026 (CEE managers 120–245 EUR, C-level 180–330 EUR).`,
-		`One public reference point: engineering leadership mentoring at marian.coach runs 430 EUR/session pay-as-you-go, 361 EUR in a first-quarter pack, same rate company-sponsored.`,
+		`One public reference point: engineering leadership mentoring at marian.coach runs 395 EUR per session; a quarter is 6 sessions for 1,975 EUR (5 paid + 1 free), 329 EUR effective, same rate company-sponsored.`,
 	);
 
 	return lines.join("\n");

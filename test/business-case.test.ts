@@ -9,14 +9,15 @@ import {
 
 describe("business case core — contract", () => {
 	it("prices are the list prices", () => {
-		expect(SESSION_PRICE_EUR).toBe(430);
-		expect(PACK_PRICE_EUR).toBe(2580);
+		expect(SESSION_PRICE_EUR).toBe(395);
+		expect(PACK_PRICE_EUR).toBe(1975); // 5 paid + 1 free
 	});
 
 	it("returns the full structured shape for a minimal input", () => {
 		const bc = buildBusinessCase({ role: "engineering_manager" });
 		expect(bc.email.subject.length).toBeGreaterThan(10);
-		expect(bc.email.body).toContain("2,580 EUR");
+		expect(bc.email.body).toContain("1,975 EUR");
+		expect(bc.email.body).toContain("5 paid + 1 free");
 		expect(bc.talking_points).toHaveLength(5);
 		expect(bc.objections).toHaveLength(5);
 		expect(bc.one_pager.sections.length).toBeGreaterThanOrEqual(8);
@@ -29,7 +30,7 @@ describe("business case core — contract", () => {
 		const txt = renderReport(buildBusinessCase({ role: "director", lang: "en" }));
 		expect(txt).toContain("Subject:");
 		expect(txt).not.toMatch(/ELC Hub/);
-		expect(txt).not.toMatch(/2,166|361 EUR/);
+		expect(txt).not.toMatch(/1,778|296 EUR/);
 		expect(txt).not.toMatch(/undefined|\[object/);
 	});
 
@@ -42,7 +43,7 @@ describe("business case core — contract", () => {
 				expect(o.kpi_suggestions[r.id]).toHaveLength(3);
 			}
 			expect(o.alternatives).toHaveLength(3);
-			expect(o.prices).toEqual({ session_eur: 430, pack_sessions: 6, pack_eur: 2580 });
+			expect(o.prices).toEqual({ session_eur: 395, pack_sessions: 6, pack_paid_sessions: 5, pack_free_sessions: 1, pack_eur: 1975 });
 		}
 	});
 });
@@ -61,10 +62,10 @@ describe("business case core — behaviour", () => {
 		const a = buildBusinessCase({ ...base, situation: "ld_budget" });
 		const b = buildBusinessCase({ ...base, situation: "no_budget" });
 		expect(a.meta.pack).toBe("first_quarter");
-		expect(a.math.ask_eur).toBe(2580);
+		expect(a.math.ask_eur).toBe(1975);
 		expect(b.meta.pack).toBe("pilot_session");
-		expect(b.math.ask_eur).toBe(430);
-		expect(b.email.subject).toMatch(/430 EUR/);
+		expect(b.math.ask_eur).toBe(395);
+		expect(b.email.subject).toMatch(/395 EUR/);
 		expect(b.email.body).toMatch(/30 days/);
 	});
 
@@ -80,31 +81,31 @@ describe("business case core — behaviour", () => {
 		expect(empty.email.body).toMatch(/\[your name\]/);
 	});
 
-	it("value is always compared against the 2,580 quarter, never the 430 pilot ask", () => {
-		// 50,000 / 430 = 116x is the implausible multiple a CFO stops reading at, and the pilot
-		// email must not quote a cost that contradicts its own 430 EUR ask.
+	it("value is always compared against the 1,975 quarter, never the 395 pilot ask", () => {
+		// 50,000 / 395 = 127x is the implausible multiple a CFO stops reading at, and the pilot
+		// email must not quote a cost that contradicts its own 395 EUR ask.
 		const pilot = buildBusinessCase({ ...base, situation: "no_budget", at_risk_attrition: 2 });
-		expect(pilot.math.ask_eur).toBe(430);
-		expect(pilot.math.roi_multiple).toBe(19.4);
-		expect(pilot.math.lines.join("\n")).toMatch(/2,580 EUR quarter/);
-		expect(pilot.email.body).toMatch(/The quarter costs 2,580 EUR/);
-		expect(pilot.talking_points.join("\n")).not.toMatch(/costs 40 to 60k EUR\. The full quarter is 430/);
+		expect(pilot.math.ask_eur).toBe(395);
+		expect(pilot.math.roi_multiple).toBe(25.3);
+		expect(pilot.math.lines.join("\n")).toMatch(/1,975 EUR quarter/);
+		expect(pilot.email.body).toMatch(/The quarter costs 1,975 EUR/);
+		expect(pilot.talking_points.join("\n")).not.toMatch(/costs 40 to 60k EUR\. The full quarter is 395/);
 		const quarter = buildBusinessCase({ ...base, situation: "ld_budget", at_risk_attrition: 2 });
 		expect(quarter.math.roi_multiple).toBe(pilot.math.roi_multiple);
 		const pilotZero = buildBusinessCase({ ...base, situation: "no_budget" });
-		expect(pilotZero.math.note).toMatch(/2,580 EUR quarter/);
+		expect(pilotZero.math.note).toMatch(/1,975 EUR quarter/);
 	});
 
 	it("napkin math: at-risk seniors × 50k, halved, vs the quarter; zero → 15x framing, no fake total", () => {
 		const two = buildBusinessCase({ ...base, at_risk_attrition: 2 });
 		expect(two.math.total_eur).toBe(100_000);
 		expect(two.math.discounted_eur).toBe(50_000);
-		expect(two.math.roi_multiple).toBe(19.4);
+		expect(two.math.roi_multiple).toBe(25.3);
 		expect(two.email.body).toMatch(/2 senior people/);
 		const zero = buildBusinessCase(base);
 		expect(zero.math.total_eur).toBe(0);
 		expect(zero.math.roi_multiple).toBeNull();
-		expect(zero.talking_points.join("\n")).toMatch(/15 times/);
+		expect(zero.talking_points.join("\n")).toMatch(/20 times/);
 	});
 
 	it("legacy agent inputs still add their lines", () => {
@@ -146,7 +147,8 @@ describe("business case core — behaviour", () => {
 		expect(vy.email.body).toMatch(/^Dobrý den, Tomas,/m);
 		expect(vy.email.body).toMatch(/Vám|Vás|Váš/);
 		expect(ty.email.body).not.toMatch(/Vám|Vás|Váš/);
-		expect(ty.email.body).toMatch(/2 580 EUR/);
+		expect(ty.email.body).toMatch(/1 975 EUR/);
+		expect(ty.email.body).toMatch(/5 placených \+ 1 zdarma/);
 		expect(ty.meta.lang).toBe("cs");
 	});
 

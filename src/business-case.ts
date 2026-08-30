@@ -9,7 +9,8 @@
  * a manager-facing one-pager, the usual objections answered, napkin math,
  * and the evidence list. English or Czech (tykání / vykání).
  *
- * Hard rules: list prices only (430 / 2,580 EUR); invoiced by Marian
+ * Hard rules: list prices only (395 EUR per session; the quarter is 6 sessions for
+ * 1,975 EUR, 5 paid + 1 free); invoiced by Marian
  * Kamenistak, sole trader; nothing invented — a missing input renders as
  * a visible [bracket]. Same terms as https://www.marian.coach/pricing/.
  */
@@ -98,13 +99,16 @@ export interface BusinessCase {
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
-// List price. Companies pay the same. Without VAT, invoiced by Marian Kamenistak,
-// sole trader. The 2,166 (361/session) price exists only through the AI wizard at
-// marian.coach/mcp/mentoring + a booked intro — never quoted by this tool.
-export const SESSION_PRICE_EUR = 430;
+// List price (v2026.09). Companies pay the same. Without VAT, invoiced by Marian
+// Kamenistak, sole trader. Packages add FREE sessions, not a lower rate: the quarter is
+// 6 sessions for 1,975 EUR (5 paid + 1 free). The 1,778 (10% AI-door) price exists only
+// through the AI wizard at marian.coach/mcp/mentoring — never quoted by this tool.
+export const SESSION_PRICE_EUR = 395;
 export const SINGLE_SESSION_EUR = SESSION_PRICE_EUR;
-export const PACK_SESSIONS = 6;
-export const PACK_PRICE_EUR = SESSION_PRICE_EUR * PACK_SESSIONS; // 2,580
+export const PACK_PAID_SESSIONS = 5;
+export const PACK_FREE_SESSIONS = 1;
+export const PACK_SESSIONS = PACK_PAID_SESSIONS + PACK_FREE_SESSIONS; // 6
+export const PACK_PRICE_EUR = SESSION_PRICE_EUR * PACK_PAID_SESSIONS; // 1,975
 
 // Midpoint of the site's published 40–60k EUR replacement anchor for a senior
 // engineer; Gallup (0.5–2x salary) is the cited backing. No salary input needed.
@@ -135,7 +139,7 @@ export const BUSINESS_CASE_INPUT_SHAPE = {
 		.enum(["ld_budget", "no_budget"])
 		.optional()
 		.describe(
-			"ld_budget = a learning/L&D budget exists (asks for the 6-session quarter, 2,580 EUR); no_budget = no budget line (asks for one 430 EUR pilot session first). Default ld_budget",
+			"ld_budget = a learning/L&D budget exists (asks for the 6-session quarter, 5 paid + 1 free, 1,975 EUR); no_budget = no budget line (asks for one 395 EUR pilot session first). Default ld_budget",
 		),
 	first_time_in_role: z
 		.boolean()
@@ -245,9 +249,9 @@ export function buildBusinessCase(input: BusinessCaseInput): BusinessCase {
 	const delayValue = input.delayed_revenue_eur ? input.delayed_revenue_eur / DELAY_DIVISOR : 0;
 	const total = attritionValue + liftValue + delayValue;
 	const discounted = total / 2;
-	// The value case is always compared against the QUARTER (2,580 EUR), never against the
-	// 430 EUR pilot ask: retention value is what the engagement buys, not what one session
-	// buys, and 50,000 / 430 = 116x is exactly the implausible multiple a CFO stops reading at.
+	// The value case is always compared against the QUARTER (1,975 EUR), never against the
+	// 395 EUR pilot ask: retention value is what the engagement buys, not what one session
+	// buys, and 50,000 / 395 = 127x is exactly the implausible multiple a CFO stops reading at.
 	const roi = total > 0 ? round1(discounted / PACK_PRICE_EUR) : null;
 
 	const mathLines: string[] = [];
@@ -490,6 +494,6 @@ export function wizardOptions(lang: Lang) {
 			id,
 			label: S.alternatives[id],
 		})),
-		prices: { session_eur: SESSION_PRICE_EUR, pack_sessions: PACK_SESSIONS, pack_eur: PACK_PRICE_EUR },
+		prices: { session_eur: SESSION_PRICE_EUR, pack_sessions: PACK_SESSIONS, pack_paid_sessions: PACK_PAID_SESSIONS, pack_free_sessions: PACK_FREE_SESSIONS, pack_eur: PACK_PRICE_EUR },
 	};
 }
