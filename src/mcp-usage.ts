@@ -176,6 +176,14 @@ function geoLabel(geo: McpGeo): string {
 	return ` · ${[place, geo.org].filter(Boolean).join(" (")}${geo.org ? ")" : ""}`;
 }
 
+/** Synthetic tool names used by external MCP directory/security scanners to check error
+ *  handling on an unrecognized `tools/call` (e.g. `__verifymcp_auth_probe_12d20461b38936c3__`).
+ *  The server correctly rejects these with a JSON-RPC error — that is a pass, not an incident —
+ *  so a "new session" Slack ping about it is noise, not signal. Matched narrowly by the known
+ *  probe's exact naming convention, not by `isError` alone, so a genuine user's genuine tool
+ *  error still pages Slack exactly as before. */
+const SYNTHETIC_PROBE_TOOL_NAME = /^__verifymcp_auth_probe_[0-9a-f]+__$/i;
+
 /* ────────────────────────── session notifier ────────────────────────── */
 
 /**
@@ -353,8 +361,12 @@ export function instrumentMcpUsage({
 
 			// Slack fires on real tool calls only. `tools/list` is what registry health
 			// checks and every client handshake send — notifying on those would mean a
-			// ping every 15 minutes from our own uptime probe.
-			if (eventName === "$mcp_tool_call" || eventName === "$mcp_missing_capability") {
+			// ping every 15 minutes from our own uptime probe. Known scanner probes are
+			// filtered the same way, for the same reason: not a real session.
+			if (
+				(eventName === "$mcp_tool_call" || eventName === "$mcp_missing_capability") &&
+				!SYNTHETIC_PROBE_TOOL_NAME.test((props.$mcp_tool_name as string) ?? "")
+			) {
 				const p = notifierFor(props).notify({
 					toolName:
 						eventName === "$mcp_missing_capability"
