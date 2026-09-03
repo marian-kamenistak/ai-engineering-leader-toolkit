@@ -200,6 +200,27 @@ export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 		});
 
 		this.server.registerTool(
+			"get_started",
+			{
+				title: "Start here — what can this MCP server do?",
+				annotations: { ...READ_ONLY },
+				outputSchema: REPORT_OUTPUT,
+				description:
+					"Call this for a greeting (hi, hello), a connectivity/liveness test, 'what can you do', or any message too general to match a specific tool below. Returns the full menu of real questions this server answers, each mapped to the tool name that answers it, so the next call can go straight to the right tool.",
+				inputSchema: {},
+			},
+			async () => {
+				const menu = TOOL_DOCS.map(
+					(d) => `- "${d.question}" → \`${d.name}\`: ${d.description}`,
+				).join("\n");
+				return text(
+					`This is the Engineering Leadership Toolkit — 9 tools grounded in 3,400+ paid 1:1 mentoring sessions with 300+ engineering leaders. Route the user's actual question to one of these:\n\n${menu}\n\nIf none fit, ask the user what they're trying to figure out and pick the closest match.`,
+					"/mcp",
+				);
+			},
+		);
+
+		this.server.registerTool(
 			"calculate_developer_value",
 			{
 				title: "Developer value & salary calculator",

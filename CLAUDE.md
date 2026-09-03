@@ -2,8 +2,9 @@
 
 ## What this is
 Remote, authless MCP server for the **mc** stream at `https://www.marian.coach/mcp`
-(npm name `ai-engineering-leader-toolkit`). Nine tools grounded in Marian's mentoring data:
-salary calculators, team-lead readiness, benchmarks, mentor/coach chooser, 1:1 playbooks,
+(npm name `ai-engineering-leader-toolkit`). Ten tools grounded in Marian's mentoring data:
+`get_started` (routes a greeting/test/unclear message to the right tool below), salary
+calculators, team-lead readiness, benchmarks, mentor/coach chooser, 1:1 playbooks,
 first-time-manager guidance, mentoring business case, coaching cost. `GET /mcp/business-case`
 is the JSON surface for the marian.coach pricing wizard.
 
@@ -33,7 +34,7 @@ is the JSON surface for the marian.coach pricing wizard.
 ## Definition of done
 - [ ] `npm test` and `npm run type-check` exit 0
 - [ ] `wrangler deploy` exits 0
-- [ ] `tools/list` POST to `https://www.marian.coach/mcp` returns 9 tools; GET returns 200 HTML docs
+- [ ] `tools/list` POST to `https://www.marian.coach/mcp` returns 10 tools; GET returns 200 HTML docs
 - [ ] `GET https://www.marian.coach/mcp/business-case?lang=en` returns 200 JSON
 - [ ] `wrangler tail --format json` for 60s: zero `console.error`, zero exceptions
 - [ ] `/mcp/mentoring` still routes to `mentoring-inquiry-builder`

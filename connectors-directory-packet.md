@@ -1,70 +1,96 @@
-# Claude Connectors Directory — submission packet (eng-leadership-toolkit)
+# Claude Connectors Directory — submission packet (both marian.coach servers)
 
-Prepared 2026-07-22. Source docs: claude.com/docs/connectors/building/submission + /review-criteria. Nothing submitted; the portal sits behind Claude.ai org-admin settings, so every click below is yours.
+Refreshed 2026-09-03 (first written 2026-07-22). Covers **two** servers now. Nothing is
+submitted; the portal sits behind Claude.ai org-admin settings, so every click below is yours.
 
-## Blockers and pre-reqs, in order
+## Why this listing and not another one
 
-1. **Plan gate (hard blocker).** The submission portal (`https://claude.ai/admin-settings/directory/submissions/new`) exists only for **Team or Enterprise** Claude organizations, and only **Owners / Primary owners** see it (Enterprise can delegate via a custom role with the "Directory management" permission; Team cannot). If your Claude org is an individual/Pro plan, there is no submit path. Verify which plan the claude.ai account carries before anything else.
-2. **Tool annotations (fix before submitting — I can do this).** Checked the live server 2026-07-22: all 9 tools have a `title`, **none have `readOnlyHint`**. Directory requirement: every tool needs `title` plus `readOnlyHint: true` (read-only) or `destructiveHint: true`. All 9 of ours are read-only. The portal's Tools step flags un-annotated tools. One small server change + redeploy fixes it; say the word.
-3. **Icon.** The portal asks for an icon upload. marian.coach ships webp favicons only: `/favicon-32x32.webp` and `/favicon-192x192.webp` (no `/favicon.ico`, returns 404). Directories normally want a square PNG; have a PNG export of the 192px mark ready (I can convert the webp if the original isn't in the mc-web repo).
-4. **Privacy policy — NOT a blocker.** `https://www.marian.coach/privacy-policy/` is live (200). The strict privacy-policy structure (README section + manifest array) applies to *local* MCPB connectors; for a remote server you just paste the URL in the Listing step. Skim it once to confirm it covers data collection, usage/storage, third-party sharing, retention, and a contact — missing pieces mean rejection.
-5. **Test yourself first.** The Test & launch step makes you confirm you ran every tool via MCP Inspector or as a custom connector in Claude. No auth on our server, so this is 10 minutes: Settings > Connectors > Add custom connector > `https://www.marian.coach/mcp`, then invoke each of the 9 tools once.
+Directory entries are automatically eligible for **Suggested Connectors** — Claude recommending
+the server in-chat when the user's task matches it. The same catalog serves claude.ai, Desktop,
+mobile, Claude Code and Cowork. `claude.com` is also the top dofollow domain on our own registry
+audit (rank 590, `registries-dofollow-2026-07-22.md`), above smithery (457) and lobehub (407).
+No domain-ownership proof is needed here; that requirement belongs to the open MCP Registry.
 
-## Prefilled values (paste as-is)
+Source: https://claude.com/docs/connectors/directory
 
-Portal steps in order. 100-char name cap, 55-char tagline cap, 2,000-char description cap.
+## Status of the 2026-07-22 blockers
+
+| # | Blocker then | Status now |
+|---|---|---|
+| 1 | Plan gate: portal needs a **Team or Enterprise** Claude org, Owner role | **STILL OPEN. The only real blocker.** Individual/Pro has no submit path |
+| 2 | Tool annotations missing | **DONE.** All 10 toolkit tools carry `{readOnlyHint, destructiveHint:false, idempotentHint, openWorldHint:false}`; the inquiry server annotates 8 read-only plus a correct write annotation on `send_mentoring_offer` |
+| 3 | Icon: no PNG | **DONE.** `plugins/engineering-leadership-plugin/assets/icon-192.png`, 300×300 PNG, converted from the site favicon |
+| 4 | Privacy policy | Live, 200. https://www.marian.coach/privacy-policy/ |
+| 5 | Test every tool yourself first | Yours to do, ~15 min per server (step 5 below) |
+
+Also corrected: the toolkit has **10** tools, not the 9 this packet claimed in July, and
+`https://www.marian.coach/favicon.ico` now returns 200 (it 404'd when this was written).
+
+## Server A — Engineering Leadership Toolkit
 
 **Connection**
 - Server URL: `https://www.marian.coach/mcp`
-- Transport: streamable HTTP
-- Same URL for every user: yes
-
-**Tools** — auto-synced from the server. Nothing to type; just check no tool shows an annotation warning (see blocker 2).
+- Transport: streamable HTTP · same URL for every user: yes · no authentication
 
 **Listing**
 - Server name: `Engineering Leadership Toolkit`
-- Tagline (55 max, this is 54): `Salary benchmarks and playbooks for engineering leaders`
-- Description (2,000 max; ~640 now, expand if you want):
-  > Benchmarks and decision tools for engineering leaders, built from 3,400+ mentoring sessions with 300+ leaders in 17+ countries. Nine tools: developer and engineering-manager market-value calculators with 2026 European salary data, a team-lead readiness assessment, engineering leadership benchmarks, 1:1 playbooks for engineering managers, first-time-manager guidance, a mentor-vs-coach-vs-advisor chooser, a coaching cost estimator, and a mentoring business-case builder. All tools are read-only, no account or authentication needed. By Marian Kamenistak, engineering leadership mentor (marian.coach).
-- Categories (pick 1–5 from their list): productivity, plus whatever maps to career/coaching/data
+- Tagline (55 cap, this is 55): `Salary benchmarks and playbooks for engineering leaders`
+- Description (2,000 cap):
+  > Benchmarks and decision tools for engineering leaders, built from 3,611 mentoring sessions with leaders in 17+ countries since 2019, rated 9.17/10 across 300+ reviews. Ten tools: developer and engineering-manager market-value calculators with 2026 European salary data, a calibrated 17-question team-lead readiness assessment, engineering leadership benchmarks, 1:1 playbooks, first-time-manager readiness and failure modes, a mentor-vs-coach-vs-advisor chooser, a coaching cost estimator, and a mentoring business-case builder. Every tool is read-only. No account, no key, no setup. By Marian Kamenistak, engineering leadership mentor (marian.coach).
 - Documentation URL: `https://www.marian.coach/mcp`
-- Privacy policy URL: `https://www.marian.coach/privacy-policy/`
-- Support contact: `marian@marian.coach`
-- Icon: PNG export of the marian.coach 192px favicon (blocker 3)
+- Privacy policy: `https://www.marian.coach/privacy-policy/`
+- Support: `marian@marian.coach`
+- Icon: `assets/icon-192.png` (300×300 PNG)
 - URL slug: `eng-leadership-toolkit` — **permanent once published**
+- Reads/writes: reads only
 
-**Use cases**
-- Primary: benchmark a developer's or EM's market value; decide "should I become a team lead?"; prep a raise or promotion case; build the business case for mentoring; pick between mentor, coach, and advisor.
-- What users need before connecting: nothing. No account, no plan, no setup.
-- Reads/writes: reads only.
+**Use cases** — benchmark a developer's or EM's market value; decide whether to take a first
+lead role; prepare a raise or promotion case; build the business case for mentoring; choose
+between a mentor, a coach and an advisor. Nothing needed before connecting.
 
-**Company**
-- Company name: Marian Kamenistak (marian.coach)
-- Website: `https://www.marian.coach`
-- Primary contact: pre-filled from your account; set email to `marian@marian.coach`
+## Server B — Mentoring Inquiry Builder
 
-**Authentication**
-- No authentication.
+New to this packet. Submit it **second**, after A is through review, so a rejection on the one
+tool that collects contact details does not stall the read-only server.
 
-**Data handling**
-- API ownership: our own first-party API (server and site share the marian.coach domain — matches their "domain should match your service" rule).
-- Personal health data: no. Sponsored content: no.
+**Connection**
+- Server URL: `https://www.marian.coach/mcp/mentoring`
+- Transport: streamable HTTP · same URL for every user: yes · no authentication
 
-**Test & launch**
-- Test account: none needed, server is open. Say exactly that, and paste: "Connect to https://www.marian.coach/mcp as a custom connector, no credentials. All 9 tools callable immediately; e.g. run calculate_developer_value with any seniority/country input."
-- Confirm you've run every tool (pre-req 5).
+**Listing**
+- Server name: `Mentoring with Marian Kamenistak`
+- Tagline (48): `Build a mentoring inquiry and get a formal offer`
+- Description:
+  > Work out whether 1:1 leadership mentoring fits your situation, and what it would cost, in about sixteen minutes. Nine tools walk through focus areas, package options and a dated session plan, then compose a brief with the authoritative price from the live catalog. One tool sends a formal itemised offer to your email and files the inquiry so Marian can reply; it asks for your name and address at that point and nowhere earlier, and it will not run until you have agreed the price. You can also book a free 30-minute intro call or a paid first session directly. Prices are computed server-side from the published catalog, 296 to 395 EUR per session. By Marian Kamenistak, engineering leadership mentor (marian.coach).
+- Documentation URL: `https://www.marian.coach/mcp/mentoring`
+- Privacy policy: `https://www.marian.coach/privacy-policy/`
+- Support: `marian@marian.coach`
+- URL slug: `mentoring-with-marian-kamenistak` — **permanent**
+- Reads/writes: **writes.** `send_mentoring_offer` files an inquiry and emails an offer;
+  `book_intro_call` / `book_first_session` return booking links. Declare this plainly — a
+  write server described as read-only is a documented rejection cause.
 
-**Compliance** — seven acknowledgments (directory guidelines, first-party API, financial transactions, AI media, prompt injection, conversation data, public docs). All seven required. None conflict with this server: no payments, no media generation, docs are public at marian.coach/mcp.
+**Data handling for B** — collects name, email, optional company, and the free-text answers the
+visitor gives. Used to reply to the inquiry. First-party API on the same domain as the service.
+No payments taken in the connector, no health data, no sponsored content.
 
 ## What you click, in order
 
-1. Log into claude.ai with the org-admin account (Team/Enterprise Owner).
-2. Go to `https://claude.ai/admin-settings/directory/submissions/new` (Admin settings > Directory > Submissions > New).
-3. Walk the 11 steps above; progress auto-saves in the browser session.
-4. Submit. Track status + reviewer feedback at `https://claude.ai/admin-settings/directory/submissions`. Escalations: `mcp-review@anthropic.com`.
-5. Expect the automatic path first: policy scan, then listing as a "community connector". Verified review only if Anthropic escalates it; no action on your side.
+1. Confirm the claude.ai account is on a **Team or Enterprise** plan and you are an Owner. If it
+   is not, this whole packet is blocked and the plugin directory is the alternative — that one
+   accepts individual authors through Console.
+2. Test the server yourself: Settings → Connectors → Add custom connector → the URL. Call every
+   tool once. The portal makes you confirm you did.
+3. `https://claude.ai/admin-settings/directory/submissions/new` → walk the 11 steps with the
+   values above.
+4. Submit. Track at `https://claude.ai/admin-settings/directory/submissions`. Escalations:
+   `mcp-review@anthropic.com`.
+5. Expect the automatic path: policy scan, then listing as a **community connector**. The
+   "Anthropic Verified" badge is a separate curation call, no application, no guarantee.
+6. Repeat for Server B once A is listed.
 
 ## Review notes
 
-- Review time varies with queue volume; portal is always open.
-- Common rejections that could bite us: missing tool annotations (blocker 2), generic error responses from tools, descriptions that don't match behavior. Our tools return structured results and the descriptions were written from the actual outputs, so annotations are the one real gap.
+Review time varies with queue volume. The rejection causes that could bite: descriptions that do
+not match behaviour (watch B — declare the writes), generic error responses, and missing tool
+annotations, which are now fixed on both servers.
