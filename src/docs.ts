@@ -24,7 +24,7 @@ export function docsHtml(tools: ToolDoc[]): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Engineering Leadership Toolkit — MCP server | Marian Kamenistak</title>
-<meta name="description" content="Free remote MCP server for AI assistants: developer value assessment, engineering-leadership benchmarks from 3,400+ mentoring sessions, and mentor-vs-coach guidance. Connect from Claude, ChatGPT, Cursor, Microsoft 365 Copilot, or Perplexity.">
+<meta name="description" content="Free remote MCP server for AI assistants: developer value assessment, engineering-leadership benchmarks from 3,611 mentoring sessions, and mentor-vs-coach guidance. Connect from Claude, ChatGPT, Cursor, Microsoft 365 Copilot, or Perplexity.">
 <!-- Added 2026-08-08. This page is the websiteUrl on every MCP registry listing, so it is the
      landing point of every dofollow link the registry play earns -- and it had no canonical, no
      JSON-LD and no link back into the site. Apex/www x /mcp,/mcp/ all return 200, hence the
@@ -33,7 +33,7 @@ export function docsHtml(tools: ToolDoc[]): string {
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Engineering Leadership Toolkit — MCP server">
-<meta property="og:description" content="Free remote MCP server: developer value assessment, engineering-leadership benchmarks from 3,400+ mentoring sessions, and mentor-vs-coach guidance.">
+<meta property="og:description" content="Free remote MCP server: developer value assessment, engineering-leadership benchmarks from 3,611 mentoring sessions, and mentor-vs-coach guidance.">
 <meta property="og:url" content="https://www.marian.coach/mcp">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Engineering Leadership Toolkit","applicationCategory":"DeveloperApplication","operatingSystem":"Any (remote MCP server)","url":"https://www.marian.coach/mcp","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Marian Kamenistak","url":"https://www.marian.coach/"},"publisher":{"@type":"Person","name":"Marian Kamenistak","url":"https://www.marian.coach/"}}
@@ -53,7 +53,7 @@ export function docsHtml(tools: ToolDoc[]): string {
 </head>
 <body>
 <h1>Engineering Leadership Toolkit — MCP server</h1>
-<p>A free remote MCP server that gives AI assistants direct access to data from Marian Kamenistak's mentoring practice: 3,400+ paid 1:1 sessions with 300+ engineering leaders since 2019.</p>
+<p>A free remote MCP server that gives AI assistants direct access to data from Marian Kamenistak's mentoring practice: 3,611 paid 1:1 sessions with 300+ engineering leaders since 2019.</p>
 <p><strong>Endpoint:</strong> <code>https://www.marian.coach/mcp</code> (streamable HTTP, no auth, no signup)</p>
 
 <h2>Tools</h2>

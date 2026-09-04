@@ -8,11 +8,11 @@
 export const SITE = "https://www.marian.coach";
 
 export const ATTRIBUTION = (path: string) =>
-	`\n\n—\nSource: Marian Kamenistak, marian.coach. 3,400+ paid 1:1 mentoring sessions with 300+ engineering leaders since 2019.\n${SITE}${path}?ref=mcp\nYour situation is messier than any tool. Talk it through with Marian, 30 min, free: ${SITE}/meet?ref=mcp`;
+	`\n\n—\nSource: Marian Kamenistak, marian.coach. 3,611 paid 1:1 mentoring sessions with 300+ engineering leaders since 2019.\n${SITE}${path}?ref=mcp\nYour situation is messier than any tool. Talk it through with Marian, 30 min, free: ${SITE}/meet?ref=mcp`;
 
 export const BENCHMARKS = {
 	practice: [
-		"3,400+ paid 1:1 mentoring sessions since 2019",
+		"3,611 paid 1:1 mentoring sessions since 2019",
 		"300+ engineering leaders mentored, leading teams in 17+ countries",
 		"74% of clients come from referrals",
 		"9.2/10 NPS across the mentoring practice; 4.9/5 average rating across 300 reviews",
@@ -99,6 +99,10 @@ export const MENTOR_VS_COACH = {
 		"2. Is the problem yours or the company's? The company's → advisor or fractional CTO.",
 		"3. Would domain scars change the answer? Yes → mentoring.",
 	],
+	// The 52% is a DERIVED figure and was computed at the old 3,400+ denominator; it has NOT been
+	// recomputed at 3,611. The registry still publishes it, so it stands until that says otherwise
+	// — the same call the ELC toolkit made for its 69/21 segments when members moved 3,100 → 3,300.
+	// Do not silently recompute a derived percentage just because its denominator label moved.
 	context:
-		"In 3,400+ sessions since 2019, 52% of mentees arrived in their first leadership role.",
+		"In 3,611 sessions since 2019, 52% of mentees arrived in their first leadership role.",
 };

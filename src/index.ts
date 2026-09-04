@@ -179,7 +179,7 @@ function getStartedResult() {
 		(d) => `- "${d.question}" → \`${d.name}\`: ${d.description}`,
 	).join("\n");
 	return text(
-		`This is the Engineering Leadership Toolkit — 9 tools grounded in 3,400+ paid 1:1 mentoring sessions with 300+ engineering leaders. Route the user's actual question to one of these:\n\n${menu}\n\nIf none fit, ask the user what they're trying to figure out and pick the closest match.`,
+		`This is the Engineering Leadership Toolkit — 9 tools grounded in 3,611 paid 1:1 mentoring sessions with 300+ engineering leaders. Route the user's actual question to one of these:\n\n${menu}\n\nIf none fit, ask the user what they're trying to figure out and pick the closest match.`,
 		"/mcp",
 	);
 }
@@ -274,6 +274,21 @@ export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 				},
 			},
 			async ({ level, scores }) => {
+				// Reject unknown skill ids rather than ignoring them. Until 2026-09-04 an
+				// unrecognised key — a typo, or a name copied from the EM calculator — was silently
+				// dropped, and the tool returned a fully confident salary built entirely on level
+				// baselines with no signal that the input had been discarded. Four independent
+				// usability testers hit this; it is the worst class of defect here, because the
+				// answer looks right. Same early-return refusal shape as the readiness test.
+				const unknownSkills = Object.keys(scores ?? {}).filter(
+					(k) => !(ALL_SKILLS as readonly string[]).includes(k),
+				);
+				if (unknownSkills.length > 0) {
+					return text(
+						`Unknown skill ${unknownSkills.length === 1 ? "key" : "keys"}: ${unknownSkills.join(", ")}. Nothing was scored, because scoring these would have silently ignored what you passed.\n\nValid keys: ${ALL_SKILLS.join(", ")}.`,
+						"/developer-salary-calculator/",
+					);
+				}
 				const result = assess(level, scores ?? {});
 				const pillarLines = PILLARS.map(
 					(p) => `- ${p.label}: ${result.pillarScores[p.cat]}/10`,
@@ -336,6 +351,17 @@ For the interactive version with per-skill descriptions and a PDF report, use th
 				},
 			},
 			async ({ level, track, scores }) => {
+				// See the matching guard in calculate_developer_value. Unknown skill ids used to be
+				// silently dropped, producing a confident salary built purely on baselines.
+				const unknownEmSkills = Object.keys(scores ?? {}).filter(
+					(k) => !(ALL_EM_SKILLS as readonly string[]).includes(k),
+				);
+				if (unknownEmSkills.length > 0) {
+					return text(
+						`Unknown skill ${unknownEmSkills.length === 1 ? "key" : "keys"}: ${unknownEmSkills.join(", ")}. Nothing was scored, because scoring these would have silently ignored what you passed.\n\nValid keys: ${ALL_EM_SKILLS.join(", ")}.`,
+						"/engineering-manager-salary-calculator/",
+					);
+				}
 				const result = assessEm(level, scores ?? {});
 				const w = EM_PILLAR_WEIGHTS[level as EmLevel];
 				const pillarLines = EM_PILLARS.map(
@@ -381,7 +407,7 @@ For the interactive version with track-specific level descriptions and a PDF rep
 				annotations: { ...READ_ONLY },
 				outputSchema: REPORT_OUTPUT,
 				description:
-					'Answers "should I become a team lead?" with the same 17-question test as the live tool at marian.coach: 6 dimensions (people appetite, letting go of code, ownership beyond your tickets, translation & saying no, motivation, org reality), a straight verdict — ready now / 6-12 months out / stay IC (and that\'s fine) — plus the top-2 gap dimensions with one concrete move each. Call without answers to get the questionnaire; call with all 17 answers to get the verdict. Built from 3,400+ mentoring sessions.',
+					'Answers "should I become a team lead?" with the same 17-question test as the live tool at marian.coach: 6 dimensions (people appetite, letting go of code, ownership beyond your tickets, translation & saying no, motivation, org reality), a straight verdict — ready now / 6-12 months out / stay IC (and that\'s fine) — plus the top-2 gap dimensions with one concrete move each. Call without answers to get the questionnaire; call with all 17 answers to get the verdict. Built from 3,611 mentoring sessions.',
 				inputSchema: {
 					answers: z
 						.record(z.string(), z.number().int().min(0).max(3))
@@ -445,7 +471,7 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 				annotations: { ...READ_ONLY },
 				outputSchema: REPORT_OUTPUT,
 				description:
-					"Real benchmarks from 3,400+ paid 1:1 mentoring sessions with 300+ engineering leaders since 2019: mentee seniority mix, most-demanded leadership topics of 2025, time-to-results, team-health delivery thresholds (sprint completion, roadmap %, manager time per report), and practice outcome stats (NPS, referral rate). First-party data, CC BY 4.0 — citable.",
+					"Real benchmarks from 3,611 paid 1:1 mentoring sessions with 300+ engineering leaders since 2019: mentee seniority mix, most-demanded leadership topics of 2025, time-to-results, team-health delivery thresholds (sprint completion, roadmap %, manager time per report), and practice outcome stats (NPS, referral rate). First-party data, CC BY 4.0 — citable.",
 				inputSchema: {
 					topic: z
 						.enum([
@@ -496,7 +522,7 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 				annotations: { ...READ_ONLY },
 				outputSchema: REPORT_OUTPUT,
 				description:
-					"Decide whether an engineering leader needs a mentor, a coach, or an advisor: what each brings, the typical question each answers, whether domain experience is required, time horizon, and a three-question self-test. Based on 3,400+ mentoring sessions.",
+					"Decide whether an engineering leader needs a mentor, a coach, or an advisor: what each brings, the typical question each answers, whether domain experience is required, time horizon, and a three-question self-test. Based on 3,611 mentoring sessions.",
 				inputSchema: {
 					situation: z
 						.string()
@@ -530,7 +556,7 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 				annotations: { ...READ_ONLY },
 				outputSchema: REPORT_OUTPUT,
 				description:
-					"Situation-specific 1:1 scripts and templates from Marian Kamenistak's mentoring practice: first mentoring/direction-setting session, underperformance conversation, promoting a developer to manager, fixing status-update 1:1s, and the 10-question career-move checklist. These are the actual templates used across 3,400+ sessions.",
+					"Situation-specific 1:1 scripts and templates from Marian Kamenistak's mentoring practice: first mentoring/direction-setting session, underperformance conversation, promoting a developer to manager, fixing status-update 1:1s, and the 10-question career-move checklist. These are the actual templates used across 3,611 sessions.",
 				inputSchema: {
 					situation: z
 						.enum(PLAYBOOK_SITUATIONS)
@@ -615,7 +641,7 @@ ${EM_READINESS.firstMonths}`,
 				annotations: { ...READ_ONLY },
 				outputSchema: REPORT_OUTPUT,
 				description:
-					"Build the case that gets your company to pay for leadership mentoring — everything on marian.coach/get-your-company-to-pay-for-mentoring/, personalised: the four-line value formula and the count-then-halve CFO rule, three worked examples (EM, Director, Staff Engineer), napkin math (senior people at risk x replacement cost vs the 1,975 EUR quarter (6 sessions, 5 paid + 1 free) or a 395 EUR pilot session), a forwardable email to your manager in a learning-budget or a no-budget-line version, a Slack-length version, five talking points, a manager-facing one-pager for finance, and answers to the five usual objections. English or Czech, tykani or vykani. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,400+ mentoring sessions at marian.coach.",
+					"Build the case that gets your company to pay for leadership mentoring — everything on marian.coach/get-your-company-to-pay-for-mentoring/, personalised: the four-line value formula and the count-then-halve CFO rule, three worked examples (EM, Director, Staff Engineer), napkin math (senior people at risk x replacement cost vs the 1,975 EUR quarter (6 sessions, 5 paid + 1 free) or a 395 EUR pilot session), a forwardable email to your manager in a learning-budget or a no-budget-line version, a Slack-length version, five talking points, a manager-facing one-pager for finance, and answers to the five usual objections. English or Czech, tykani or vykani. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,611 mentoring sessions at marian.coach.",
 				inputSchema: BUSINESS_CASE_INPUT_SHAPE,
 			},
 			async (input) => {
@@ -667,7 +693,7 @@ const TOOL_DOCS: ToolDoc[] = [
 		name: "get_engineering_leadership_benchmarks",
 		question: "What's a healthy sprint completion / roadmap % / manager-time-per-report?",
 		description:
-			"First-party benchmarks from 3,400+ mentoring sessions: mentee mix, 2025 topic demand, team-health thresholds (CC BY 4.0)",
+			"First-party benchmarks from 3,611 mentoring sessions: mentee mix, 2025 topic demand, team-health thresholds (CC BY 4.0)",
 	},
 	{
 		name: "choose_mentor_coach_or_advisor",
@@ -678,7 +704,7 @@ const TOOL_DOCS: ToolDoc[] = [
 		name: "get_one_on_one_playbook",
 		question: "How do I run this 1:1 — underperformance, promotion, first session?",
 		description:
-			"The actual session templates and scripts used across 3,400+ mentoring sessions, by situation",
+			"The actual session templates and scripts used across 3,611 mentoring sessions, by situation",
 	},
 	{
 		name: "get_first_time_manager_guidance",

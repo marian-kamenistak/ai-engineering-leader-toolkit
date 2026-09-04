@@ -2,7 +2,7 @@
  * Business case v2 — string tables (EN + CS).
  *
  * The employee's voice, not marketing copy: they send this to their boss.
- * Rules baked in: one proof number in the email (3,400+ sessions), no invented
+ * Rules baked in: one proof number in the email (3,611 sessions), no invented
  * specifics (a missing input renders as a visible [bracket]), the invoicing
  * line names Marian Kamenistak as a sole trader (never ELC Hub s.r.o.), list
  * prices only (395 EUR/session, 1,975 EUR quarter — the 1,778 AI-door price never appears here).
@@ -185,7 +185,7 @@ const EN: Strings = {
 			greeting: "Hi {manager},",
 			greeting_fallback: "Hi [manager's name],",
 			p1: "I want to fix one thing in the next 90 days: {problem}. I'd like to use my learning budget on it.",
-			p2: "The ask: 6 mentoring sessions over 3 months with Marian Kamenistak (marian.coach), an engineering leader who has run 3,400+ sessions with people in my role. 6 sessions, 5 paid + 1 free: 5 x 395 EUR = 1,975 EUR without VAT, invoiced to us by him as a sole trader, our PO number on the invoice.",
+			p2: "The ask: 6 mentoring sessions over 3 months with Marian Kamenistak (marian.coach), an engineering leader who has run 3,611 sessions with people in my role. 6 sessions, 5 paid + 1 free: 5 x 395 EUR = 1,975 EUR without VAT, invoiced to us by him as a sole trader, our PO number on the invoice.",
 			p3: "What you'd see by session 6:",
 			p4: "We put these on paper before session 1 and review them together at session 3 and session 6. The intro call is free, any session I rate under 7/10 isn't charged, and if the KPIs don't move in 90 days we stop.",
 		},
@@ -194,7 +194,7 @@ const EN: Strings = {
 			greeting: "Hi {manager},",
 			greeting_fallback: "Hi [manager's name],",
 			p1: "I want to fix one thing in the next 90 days: {problem}. I'd rather test outside help on it before asking for a real budget, so this is a small ask.",
-			p2: "The ask: one 60-minute session with Marian Kamenistak (marian.coach), an engineering leader who has run 3,400+ sessions with people in my role. 395 EUR without VAT, invoiced to us by him as a sole trader, our PO number on the invoice. If it's useful, the session counts toward the 6-session quarter (5 paid + 1 free, 1,975 EUR) when I continue within 30 days. If it isn't, we've spent 395 EUR and I stop bringing it up.",
+			p2: "The ask: one 60-minute session with Marian Kamenistak (marian.coach), an engineering leader who has run 3,611 sessions with people in my role. 395 EUR without VAT, invoiced to us by him as a sole trader, our PO number on the invoice. If it's useful, the session counts toward the 6-session quarter (5 paid + 1 free, 1,975 EUR) when I continue within 30 days. If it isn't, we've spent 395 EUR and I stop bringing it up.",
 			p3: "What I'd bring back from the pilot: a written plan for {problem}, with the targets for the next 90 days:",
 			p4: "The intro call is free and any session I rate under 7/10 isn't charged.",
 		},
@@ -234,9 +234,9 @@ const EN: Strings = {
 		s_what: "What it is",
 		what_body: {
 			ld_budget:
-				"6 one-hour 1:1 sessions over 3 months, plus async access between sessions, with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,400+ mentoring sessions with 300 leaders since 2019; rated 9.17/10 across 300+ reviews.",
+				"6 one-hour 1:1 sessions over 3 months, plus async access between sessions, with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,611 mentoring sessions with 300 leaders since 2019; rated 9.17/10 across 300+ reviews.",
 			no_budget:
-				"Pilot: one 60-minute 1:1 session with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,400+ mentoring sessions with 300 leaders since 2019; rated 9.17/10 across 300+ reviews. If continued within 30 days, the session counts toward the 6-session quarter.",
+				"Pilot: one 60-minute 1:1 session with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,611 mentoring sessions with 300 leaders since 2019; rated 9.17/10 across 300+ reviews. If continued within 30 days, the session counts toward the 6-session quarter.",
 		},
 		s_investment: "Investment",
 		investment_rows: {
@@ -344,7 +344,7 @@ const EN: Strings = {
 			url: "https://journals.aom.org/doi/10.5465/amle.2022.0107",
 		},
 		{
-			claim: "3,400+ sessions, 300 leaders since 2019, rated 9.17/10 across 300+ reviews.",
+			claim: "3,611 sessions, 300 leaders since 2019, rated 9.17/10 across 300+ reviews.",
 			source: "marian.coach",
 			url: "https://www.marian.coach/engineering-leadership-statistics/",
 		},
