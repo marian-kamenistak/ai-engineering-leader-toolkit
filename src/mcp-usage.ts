@@ -12,13 +12,25 @@
  *     previously unmeasurable: Workers observability counts requests to /mcp, not which
  *     tool ran inside them.
  *  2. Slack — the real-time "somebody is using this right now" ping, one parent message
- *     per SESSION with each subsequent call as a thread reply. PostHog cannot do this:
+ *     per CONVERSATION with each subsequent call as a thread reply. PostHog cannot do this:
  *     its insight alerts evaluate on a schedule, and per-event destinations are a paid
  *     CDP product. A direct fetch() is real-time and free.
  *
  * Both hang off `beforeSend`, which @posthog/mcp calls once per emitted event with the
  * fully-built payload. That is deliberately the ONLY hook — one place where a tool call
  * is observed, so the two sinks can never disagree about what happened.
+ *
+ * Session grouping is KV-backed (`MCP_SESSIONS`), keyed by a hash of server + client +
+ * geo, not by MCP's own session id. A reconnecting streamable-HTTP client gets a fresh
+ * session id on every reconnect — hashing on client identity instead is what turns a
+ * conversation that reconnects three times into one Slack thread instead of four. This
+ * also means every host shape (Durable-Object-per-session `McpAgent`, or a fresh
+ * `McpServer` per request via `createMcpHandler`) resolves grouping identically, so there
+ * is no more `stateless` flag or in-memory session map to maintain.
+ *
+ * A session/conversation shaped like an automated scanner (known probe client names, or
+ * an unnamed client on a datacentre network) is demoted to a single flat Slack line with
+ * no thread — still visible for audit, never mistaken for a real visitor.
  *
  * @posthog/mcp is pinned EXACTLY (not caret). It is pre-1.0 and ships breaking changes in
  * minor 0.x releases; a caret range would let one land silently on the next npm install.
@@ -30,7 +42,7 @@ import { PostHog } from "posthog-node";
 /** Per-server identity. The PostHog key is a project *write* key — public by design, it
  *  already ships in the site's client-side bundle, so it belongs in source, not in a secret. */
 export interface McpUsageConfig {
-	/** Server name, used as the Slack message prefix. */
+	/** Server name, used as the Slack message prefix and as part of the KV conversation key. */
 	serverName: string;
 	/** Human label for the property this server fronts, e.g. "marian.coach". */
 	domain: string;
@@ -39,13 +51,33 @@ export interface McpUsageConfig {
 	posthogKey: string;
 	/** Defaults to EU — every property here is on PostHog EU. */
 	posthogHost?: string;
+	/** Per-server override for the Slack response-summary line (the `→ …` line under a
+	 *  call's arguments). Falls back to `defaultSummarize` when omitted — a generic
+	 *  "first text block, footer stripped, capped at 200 chars" extractor that works for
+	 *  any tool without per-tool wiring. Only override where the generic output is
+	 *  verifiably unhelpful for a specific tool's response shape. */
+	summarize?: (toolName: string, response: unknown) => string | undefined;
 }
 
-/** Secrets this module reads off the Worker env. Both optional: absent = that sink is off,
- *  which is what keeps `wrangler dev` and the test suite from paging anyone. */
+/** The structural subset of Workers' `KVNamespace` used here, declared locally rather than
+ *  imported from `@cloudflare/workers-types` — one of the five repos this file is copied
+ *  into (`elc-conference-mcp-tickets`) does not have that package, and this file must stay
+ *  byte-identical across all five. The real `KVNamespace` type is structurally compatible,
+ *  so binding it in `wrangler.jsonc`/`wrangler.toml` and typing `env.MCP_SESSIONS` as this
+ *  interface (or letting the generated `Env` widen to the real type) both work. */
+export interface McpSessionsKv {
+	get(key: string): Promise<string | null>;
+	put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
+}
+
+/** Secrets/bindings this module reads off the Worker env. All optional: absent Slack
+ *  credentials = that sink is off (keeps `wrangler dev` and the test suite from paging
+ *  anyone); absent `MCP_SESSIONS` = calls post as flat, ungrouped Slack lines instead of
+ *  threaded conversations — degraded, never broken. */
 export interface McpUsageEnv {
 	SLACK_BOT_TOKEN_ELC?: string;
 	MCP_USAGE_SLACK_CHANNEL?: string;
+	MCP_SESSIONS?: McpSessionsKv;
 }
 
 /** Request geography, captured in the Worker fetch handler and handed to the Durable Object
@@ -119,7 +151,7 @@ function redact(value: unknown, depth = 0): unknown {
 	return value;
 }
 
-/* ────────────────────────── Slack ────────────────────────── */
+/* ────────────────────────── Slack formatting ────────────────────────── */
 
 const SLACK_API = "https://slack.com/api/";
 
@@ -149,19 +181,57 @@ async function slack(
 	}
 }
 
+/** `$mcp_parameters` carries the whole JSON-RPC envelope — `{ request: { params:
+ *  { arguments: {...} } } }` for a live tools/call — not the tool's arguments directly.
+ *  Formatting the envelope (the pre-2026-09 bug) rendered `request: {"id":3,"jsonrpc"…`
+ *  and truncated before any real value appeared. Unwrap to the actual arguments object,
+ *  with a flat `{arguments:{...}}` shape and a last-resort passthrough for anything else. */
+export function unwrapArguments(parameters: unknown): Record<string, unknown> | undefined {
+	if (!parameters || typeof parameters !== "object") return undefined;
+	const p = parameters as Record<string, unknown>;
+	const request = p.request;
+	if (request && typeof request === "object") {
+		const params = (request as Record<string, unknown>).params;
+		if (params && typeof params === "object") {
+			const args = (params as Record<string, unknown>).arguments;
+			if (args && typeof args === "object") return args as Record<string, unknown>;
+		}
+	}
+	if (p.arguments && typeof p.arguments === "object") return p.arguments as Record<string, unknown>;
+	return p;
+}
+
 /** Format tool arguments as compact Slack lines. Truncated hard — a business-case call can
- *  carry a paragraph of prose and we want a glanceable ping, not a transcript. */
-function formatArgs(args: unknown): string {
+ *  carry a paragraph of prose and we want a glanceable ping, not a transcript. Expects
+ *  already-unwrapped arguments (see `unwrapArguments`), not the raw envelope. */
+export function formatArgs(args: unknown): string {
 	if (!args || typeof args !== "object" || Array.isArray(args)) return "";
 	const parts: string[] = [];
 	for (const [k, v] of Object.entries(args as Record<string, unknown>)) {
 		// `context` is the intent parameter @posthog/mcp injects — surfaced on its own line.
 		if (k === "context" || v === undefined || v === null || v === "") continue;
 		const rendered = typeof v === "object" ? JSON.stringify(v) : String(v);
-		parts.push(`${k}: ${rendered.length > 60 ? `${rendered.slice(0, 60)}…` : rendered}`);
-		if (parts.length >= 6) break;
+		parts.push(`${k}: ${rendered.length > 120 ? `${rendered.slice(0, 120)}…` : rendered}`);
+		if (parts.length >= 10) break;
 	}
 	return parts.join(" · ");
+}
+
+/** Generic response-summary fallback: first text content block, the attribution footer
+ *  (everything from "Source:" onward) stripped, capped at 200 chars. Works for any tool's
+ *  response shape without per-tool wiring — `McpUsageConfig.summarize` overrides it only
+ *  where this is verifiably unhelpful. */
+export function defaultSummarize(_toolName: string, response: unknown): string | undefined {
+	if (!response || typeof response !== "object") return undefined;
+	const content = (response as { content?: unknown }).content;
+	if (!Array.isArray(content)) return undefined;
+	const first = content.find(
+		(b) => b && typeof b === "object" && (b as { type?: unknown }).type === "text",
+	) as { text?: string } | undefined;
+	if (!first?.text) return undefined;
+	const cut = first.text.split(/\n?Source:/)[0].trim();
+	if (!cut) return undefined;
+	return cut.length > 200 ? `${cut.slice(0, 200)}…` : cut;
 }
 
 function clientLabel(props: Record<string, unknown>): string {
@@ -178,117 +248,176 @@ function geoLabel(geo: McpGeo): string {
 
 /** Synthetic tool names used by external MCP directory/security scanners to check error
  *  handling on an unrecognized `tools/call` (e.g. `__verifymcp_auth_probe_12d20461b38936c3__`).
- *  The server correctly rejects these with a JSON-RPC error — that is a pass, not an incident —
- *  so a "new session" Slack ping about it is noise, not signal. Matched narrowly by the known
- *  probe's exact naming convention, not by `isError` alone, so a genuine user's genuine tool
- *  error still pages Slack exactly as before. */
+ *  Folded into `looksAutomated` below rather than fully suppressed: still visible in Slack
+ *  as a demoted one-liner, never mistaken for a real visitor, but no longer invisible. */
 const SYNTHETIC_PROBE_TOOL_NAME = /^__verifymcp_auth_probe_[0-9a-f]+__$/i;
 
-/* ────────────────────────── session notifier ────────────────────────── */
+/** MCP client names seen in production belonging to directory/security scanners rather
+ *  than real MCP hosts (evidence: `#web-mcp-usage-bot`, 2026-08 through 2026-09). Matched
+ *  as a prefix so a version suffix ("mcp-dataset-probe/0.1") still matches. */
+const KNOWN_PROBE_CLIENT_NAMES =
+	/^(verifymcp-probe|mcp-dataset-probe|mcp-vouch|mcp-scan|cracked-probe|probe)\b/i;
 
-/**
- * Per-session Slack state.
- *
- * One instance per Durable Object, which is exactly one MCP session — `McpAgent` spins up a
- * fresh DO per connection, so instance fields ARE session state with no store and no TTL to
- * manage. That is the whole reason the per-session grouping is cheap here and would be
- * genuinely hard on a stateless/serverless MCP host.
- */
+/** Network-operator hints that mean "datacentre/hosting", not a residential or corporate
+ *  ISP — used only when the client also sent no name, since a named client is judged by
+ *  its name first. */
+const DATACENTRE_ORG_HINTS =
+	/\b(hosting|cloud|data ?center|colo|vps|render|ovh|digitalocean|linode|vultr|hetzner|amazon|aws|google cloud|azure|alibaba)\b/i;
+
+/** True when a call looks machine-generated rather than a real visitor's session: a known
+ *  scanner client name, a synthetic probe tool name, or an unnamed client calling from a
+ *  datacentre network. Demoted calls still post to Slack (a one-liner, see `postDemoted`)
+ *  — visible for audit, never threaded as if they were a real conversation. */
+export function looksAutomated(props: Record<string, unknown>, geo: McpGeo): boolean {
+	const name = (props.$mcp_client_name as string | undefined) ?? "";
+	if (KNOWN_PROBE_CLIENT_NAMES.test(name)) return true;
+	if (SYNTHETIC_PROBE_TOOL_NAME.test((props.$mcp_tool_name as string) ?? "")) return true;
+	const unnamed = !name || name === "unknown client";
+	if (unnamed && geo.org && DATACENTRE_ORG_HINTS.test(geo.org)) return true;
+	return false;
+}
+
+/* ────────────────────────── conversation grouping ────────────────────────── */
+
+/** Small, fast, non-cryptographic string hash (FNV-1a, 32-bit). This is a Slack-thread
+ *  bucketing key, not a security boundary, so a full hash algorithm needing `crypto.subtle`
+ *  would buy nothing — and would need an ambient `Crypto` type this file cannot assume:
+ *  `elc-conference-mcp-tickets` has neither `@cloudflare/workers-types` nor a DOM lib
+ *  locally, and this file must stay byte-identical across all five repos. */
+function hashKey(input: string): string {
+	let hash = 0x811c9dc5;
+	for (let i = 0; i < input.length; i++) {
+		hash ^= input.charCodeAt(i);
+		hash = Math.imul(hash, 0x01000193);
+	}
+	return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+/** The conversation key groups a reconnecting streamable-HTTP client's calls into one
+ *  Slack thread even though MCP hands out a fresh `$session_id` on every reconnect.
+ *  Trade-off, accepted 2026-09: two genuine visitors on the same client, same city, same
+ *  network operator, within the same 30-minute window (see `SESSION_TTL_SECONDS`) merge
+ *  into one thread. Near-zero at current volume. Each thread reply still carries its own
+ *  `$session_id` in PostHog, so a bad merge is diagnosable, never silent. */
+export function conversationKey(serverName: string, props: Record<string, unknown>, geo: McpGeo): string {
+	const clientName = (props.$mcp_client_name as string) ?? "";
+	const clientVersion = (props.$mcp_client_version as string) ?? "";
+	const raw = [serverName, clientName, clientVersion, geo.city ?? "", geo.country ?? "", geo.org ?? ""].join("|");
+	return `mcp:sess:${serverName}:${hashKey(raw)}`;
+}
+
+/** A reconnect 30+ minutes after the last call reads as a new conversation, not a
+ *  continuation — matches the spec's accepted merge-risk window. */
+const SESSION_TTL_SECONDS = 30 * 60;
+
+interface StoredSessionState {
+	threadTs: string;
+	calls: number;
+	parentText: string;
+}
+
 interface CallNote {
 	toolName: string;
 	intent?: string;
-	args: unknown;
+	/** Pre-formatted via `formatArgs(unwrapArguments(...))`. */
+	argLine: string;
+	summary?: string;
 	isError: boolean;
-	/** The event's own properties — carries client name/version, which only the event knows. */
-	props: Record<string, unknown>;
 }
 
-class SessionNotifier {
-	private threadTs?: string;
-	private calls = 0;
-	private parentText = "";
-	/** Serialises Slack writes. Two tool calls can land close enough together that both see
-	 *  `threadTs === undefined` and each post a parent message, splitting one session across
-	 *  two threads. Chaining on a promise keeps them ordered without a lock. */
-	private queue: Promise<void> = Promise.resolve();
-
-	constructor(
-		private readonly config: McpUsageConfig,
-		private readonly env: McpUsageEnv,
-		private readonly geo: McpGeo,
-	) {}
-
-	notify(note: CallNote): Promise<void> {
-		this.queue = this.queue
-			.then(() => this.post(note))
-			// Never let one Slack failure poison the chain for the rest of the session.
-			.catch((e) => console.error("[MCP_USAGE_SLACK] queue", String(e)));
-		return this.queue;
-	}
-
-	private async post(note: CallNote): Promise<void> {
-		this.calls += 1;
-		const detail = [
-			`*${note.toolName}*${note.isError ? " :warning: _errored_" : ""}`,
-			note.intent ? `_${note.intent}_` : "",
-			formatArgs(note.args),
-		]
-			.filter(Boolean)
-			.join("\n");
-
-		if (!this.threadTs) {
-			this.parentText =
-				`:electric_plug: *${this.config.domain} MCP* — new session\n` +
-				`Client: ${clientLabel(note.props)}${geoLabel(this.geo)}\n${detail}`;
-			const res = await slack(this.env, "chat.postMessage", { text: this.parentText });
-			// No ts (Slack down, bot not in channel) means no thread to hang replies off.
-			// Leaving threadTs unset makes the next call retry the parent post rather than
-			// silently orphaning the rest of the session.
-			if (res.ok && res.ts) this.threadTs = res.ts;
-			return;
-		}
-
-		// Subsequent calls: detail into the thread, and refresh the parent's running count so
-		// the channel stays one line per session (the approved shape).
-		await slack(this.env, "chat.postMessage", { thread_ts: this.threadTs, text: detail });
-		await slack(this.env, "chat.update", {
-			ts: this.threadTs,
-			text: `${this.parentText}\n:thread: +${this.calls - 1} more call${this.calls === 2 ? "" : "s"} this session`,
-		});
-	}
+function formatDetail(note: CallNote): string {
+	return [
+		`*${note.toolName}*${note.isError ? " :warning: _errored_" : ""}`,
+		note.intent ? `_${note.intent}_` : "",
+		note.argLine,
+		note.summary ? `→ ${note.summary}` : "",
+	]
+		.filter(Boolean)
+		.join("\n");
 }
 
-/**
- * Session lookup for STATELESS hosts (`createMcpHandler`, which builds a fresh McpServer per
- * request — elc-conference-mcp is the one server here shaped that way). With no Durable
- * Object there is no per-session instance to hang state off, so notifiers are resolved by
- * `$session_id` out of a module-level map.
- *
- * Best-effort by construction: a Workers isolate is recycled at the runtime's discretion, and
- * two requests in one session can land on different isolates. When the lookup misses, the
- * session simply opens a second parent message in Slack — noisier, never wrong, and never a
- * dropped notification. Not worth a KV round trip on every tool call to tighten.
- */
-const STATELESS_SESSIONS = new Map<string, SessionNotifier>();
-/** Bounds the map so a long-lived isolate cannot accumulate sessions without limit. */
-const STATELESS_SESSION_CAP = 200;
-
-function statelessNotifier(
-	sessionId: string,
-	config: McpUsageConfig,
+/** Posts (and threads) one call's Slack notification for a real, non-automated
+ *  conversation. Reads the current state from KV, decides whether this is the first call
+ *  in the conversation or a continuation, posts accordingly, and writes the updated state
+ *  back with a refreshed TTL. */
+export async function postSessionUpdate(
+	kv: McpSessionsKv,
+	key: string,
 	env: McpUsageEnv,
+	config: McpUsageConfig,
 	geo: McpGeo,
-): SessionNotifier {
-	const existing = STATELESS_SESSIONS.get(sessionId);
-	if (existing) return existing;
-	if (STATELESS_SESSIONS.size >= STATELESS_SESSION_CAP) {
-		// Map iteration is insertion-ordered, so the first key is the oldest session.
-		const oldest = STATELESS_SESSIONS.keys().next().value;
-		if (oldest !== undefined) STATELESS_SESSIONS.delete(oldest);
+	props: Record<string, unknown>,
+	note: CallNote,
+): Promise<void> {
+	const existingRaw = await kv.get(key);
+	const existing = existingRaw ? (JSON.parse(existingRaw) as StoredSessionState) : null;
+	const detail = formatDetail(note);
+
+	if (!existing) {
+		const parentText =
+			`:electric_plug: *${config.domain} MCP* — new session\n` +
+			`Client: ${clientLabel(props)}${geoLabel(geo)}\n${detail}`;
+		const res = await slack(env, "chat.postMessage", { text: parentText });
+		// No ts (Slack down, bot not in channel) means no thread to hang replies off.
+		// Leaving KV unwritten makes the next call retry the parent post rather than
+		// silently orphaning the rest of the conversation.
+		if (res.ok && res.ts) {
+			const state: StoredSessionState = { threadTs: res.ts, calls: 1, parentText };
+			await kv.put(key, JSON.stringify(state), { expirationTtl: SESSION_TTL_SECONDS });
+		}
+		return;
 	}
-	const created = new SessionNotifier(config, env, geo);
-	STATELESS_SESSIONS.set(sessionId, created);
-	return created;
+
+	const calls = existing.calls + 1;
+	await slack(env, "chat.postMessage", { thread_ts: existing.threadTs, text: detail });
+	await slack(env, "chat.update", {
+		ts: existing.threadTs,
+		text: `${existing.parentText}\n:thread: +${calls - 1} more call${calls === 2 ? "" : "s"} this session`,
+	});
+	const state: StoredSessionState = { ...existing, calls };
+	await kv.put(key, JSON.stringify(state), { expirationTtl: SESSION_TTL_SECONDS });
+}
+
+/** One flat line, no thread — for a call that looks automated (see `looksAutomated`).
+ *  Still visible in the channel for audit; never grouped as if it were a real visitor. */
+export async function postDemoted(env: McpUsageEnv, props: Record<string, unknown>, geo: McpGeo): Promise<void> {
+	await slack(env, "chat.postMessage", { text: `• probe · ${clientLabel(props)}${geoLabel(geo)}` });
+}
+
+/** Fallback when no `MCP_SESSIONS` KV binding is configured (e.g. a repo mid-rollout, or
+ *  local `wrangler dev` without `--kv`): posts every call as its own untreaded message.
+ *  Degraded (no conversation grouping) rather than broken. */
+export async function postUngrouped(
+	env: McpUsageEnv,
+	config: McpUsageConfig,
+	props: Record<string, unknown>,
+	geo: McpGeo,
+	note: CallNote,
+): Promise<void> {
+	const text = `:electric_plug: *${config.domain} MCP*\nClient: ${clientLabel(props)}${geoLabel(geo)}\n${formatDetail(note)}`;
+	await slack(env, "chat.postMessage", { text });
+}
+
+/** Serialises Slack/KV writes per conversation key. Two tool calls in the same
+ *  conversation can land close enough together that both read "no state yet" from KV and
+ *  each post a parent message — chaining on a promise per key keeps them ordered without a
+ *  lock. This is a same-isolate guarantee only: two calls landing on different isolates can
+ *  still race on the KV read, which just opens a second parent (noisier, never wrong, never
+ *  a dropped notification) — the same accepted trade-off the old stateless-host map had. */
+const conversationQueues = new Map<string, Promise<void>>();
+/** Bounds the map so a long-lived isolate cannot accumulate keys without limit. */
+const CONVERSATION_QUEUE_CAP = 200;
+
+export function queueNotify(key: string, task: () => Promise<void>): Promise<void> {
+	const prev = conversationQueues.get(key) ?? Promise.resolve();
+	const next = prev.then(task).catch((e) => console.error("[MCP_USAGE_SLACK] queue", String(e)));
+	if (!conversationQueues.has(key) && conversationQueues.size >= CONVERSATION_QUEUE_CAP) {
+		// Map iteration is insertion-ordered, so the first key is the oldest.
+		const oldest = conversationQueues.keys().next().value;
+		if (oldest !== undefined) conversationQueues.delete(oldest);
+	}
+	conversationQueues.set(key, next);
+	return next;
 }
 
 /* ────────────────────────── entry point ────────────────────────── */
@@ -302,27 +431,18 @@ export interface InstrumentMcpUsageArgs {
 	config: McpUsageConfig;
 	env: McpUsageEnv;
 	geo?: McpGeo;
-	/** `DurableObjectState.waitUntil` — keeps the DO alive until Slack and the PostHog flush
-	 *  finish, without making the tool's own response wait on them. */
+	/** `DurableObjectState.waitUntil` — keeps the DO (or isolate) alive until Slack and the
+	 *  PostHog flush finish, without making the tool's own response wait on them. */
 	waitUntil?: (p: Promise<unknown>) => void;
-	/** Set for hosts that build a fresh McpServer per request (`createMcpHandler`) rather than
-	 *  one per session (`McpAgent` + Durable Object). See STATELESS_SESSIONS above. */
-	stateless?: boolean;
 }
 
 /**
- * Wire both sinks onto an McpServer. Call this in `McpAgent.init()` BEFORE registering
- * tools — `instrument()` also proxies `_registeredTools`, so tools registered afterwards are
+ * Wire both sinks onto an McpServer. Call this in `McpAgent.init()` (or the Worker fetch
+ * handler, for a stateless `createMcpHandler` host) BEFORE registering tools —
+ * `instrument()` also proxies `_registeredTools`, so tools registered afterwards are
  * wrapped too, but calling it first keeps the ordering obvious.
  */
-export function instrumentMcpUsage({
-	server,
-	config,
-	env,
-	geo = {},
-	waitUntil,
-	stateless = false,
-}: InstrumentMcpUsageArgs): void {
+export function instrumentMcpUsage({ server, config, env, geo = {}, waitUntil }: InstrumentMcpUsageArgs): void {
 	if (!config.posthogKey) return;
 
 	const posthog = new PostHog(config.posthogKey, {
@@ -333,13 +453,6 @@ export function instrumentMcpUsage({
 		flushAt: 1,
 		flushInterval: 0,
 	});
-
-	/** One notifier per session. On an McpAgent host this instance IS the session, so it is
-	 *  built once; on a stateless host it is resolved per event by `$session_id`. */
-	const instanceNotifier = stateless ? undefined : new SessionNotifier(config, env, geo);
-	const notifierFor = (props: Record<string, unknown>): SessionNotifier =>
-		instanceNotifier ??
-		statelessNotifier((props.$session_id as string) ?? "unknown-session", config, env, geo);
 
 	instrument(server, posthog, {
 		// Inject a `context` argument on every tool so the agent states WHY it called it.
@@ -361,22 +474,30 @@ export function instrumentMcpUsage({
 
 			// Slack fires on real tool calls only. `tools/list` is what registry health
 			// checks and every client handshake send — notifying on those would mean a
-			// ping every 15 minutes from our own uptime probe. Known scanner probes are
-			// filtered the same way, for the same reason: not a real session.
-			if (
-				(eventName === "$mcp_tool_call" || eventName === "$mcp_missing_capability") &&
-				!SYNTHETIC_PROBE_TOOL_NAME.test((props.$mcp_tool_name as string) ?? "")
-			) {
-				const p = notifierFor(props).notify({
-					toolName:
-						eventName === "$mcp_missing_capability"
-							? ":grey_question: asked for a capability we don't have"
-							: ((props.$mcp_tool_name as string) ?? "unknown tool"),
+			// ping every 15 minutes from our own uptime probe.
+			if (eventName === "$mcp_tool_call" || eventName === "$mcp_missing_capability") {
+				const toolName =
+					eventName === "$mcp_missing_capability"
+						? ":grey_question: asked for a capability we don't have"
+						: ((props.$mcp_tool_name as string) ?? "unknown tool");
+				const note: CallNote = {
+					toolName,
 					intent: props.$mcp_intent as string | undefined,
-					args: props.$mcp_parameters,
+					argLine: formatArgs(unwrapArguments(props.$mcp_parameters)),
+					summary: (config.summarize ?? defaultSummarize)(toolName, props.$mcp_response),
 					isError: Boolean(props.$mcp_is_error),
-					props,
-				});
+				};
+
+				let p: Promise<void>;
+				if (looksAutomated(props, geo)) {
+					p = postDemoted(env, props, geo);
+				} else if (env.MCP_SESSIONS) {
+					const kv = env.MCP_SESSIONS;
+					const key = conversationKey(config.serverName, props, geo);
+					p = queueNotify(key, () => postSessionUpdate(kv, key, env, config, geo, props, note));
+				} else {
+					p = postUngrouped(env, config, props, geo, note);
+				}
 				// Fire-and-forget: the tool's response must not wait on Slack's round trip.
 				if (waitUntil) waitUntil(p);
 			}

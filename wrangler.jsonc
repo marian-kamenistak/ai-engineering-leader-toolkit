@@ -26,6 +26,12 @@
 			},
 		],
 	},
+	"kv_namespaces": [
+		{
+			"binding": "MCP_SESSIONS",
+			"id": "f459fd36614740fcbe313953349d7776",
+		},
+	],
 	"observability": {
 		"enabled": true,
 	},
