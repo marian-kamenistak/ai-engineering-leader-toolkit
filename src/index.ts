@@ -18,6 +18,15 @@ import { ATTRIBUTION } from "./content";
 import { docsHtml, type ToolDoc } from "./docs";
 import { SERVICES } from "./core/services";
 import { dispatch } from "./core/dispatch";
+import { SSE_HEADERS, formatSSEEvent, A2A_PROTOCOL_VERSION } from "@a2a-js/sdk";
+import {
+	DefaultRequestHandler,
+	InMemoryTaskStore,
+	JsonRpcTransportHandler,
+	ServerCallContext,
+	UnauthenticatedUser,
+} from "@a2a-js/sdk/server";
+import { A2A_PATH, EngLeadershipToolkitExecutor, ORIGIN, buildAgentCard } from "./a2a";
 import { getMoreToolsResult } from "@posthog/mcp";
 
 // Every tool is a read-only lookup or calculation over first-party mentoring data:
@@ -171,7 +180,7 @@ const USAGE_CONFIG: McpUsageConfig = {
 export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 	server = new McpServer({
 		name: "eng-leadership-toolkit",
-		version: "1.6.0",
+		version: "1.7.0",
 	});
 
 	async init() {
@@ -250,9 +259,92 @@ const TOOL_DOCS: ToolDoc[] = SERVICES.map((s) => ({
 	description: s.summary,
 }));
 
+const isAsyncIterable = (v: unknown): v is AsyncIterable<unknown> =>
+	v != null && typeof (v as Record<symbol, unknown>)[Symbol.asyncIterator] === "function";
+
+/** A fresh handler per request: InMemoryTaskStore is per-request state, and every service
+ *  here answers synchronously, so a Task never needs to outlive the response. The moment a
+ *  long-running service ships, this has to move to a Durable-Object-backed TaskStore. */
+function a2aTransportFor() {
+	return new JsonRpcTransportHandler(
+		new DefaultRequestHandler(
+			buildAgentCard(),
+			new InMemoryTaskStore(),
+			new EngLeadershipToolkitExecutor(),
+		),
+	);
+}
+
+function a2aDocsHtml(): string {
+	const skills = SERVICES.map((s) => `<li><code>${s.id}</code> — ${s.description}</li>`).join("\n");
+	return `<!doctype html><meta charset="utf-8"><title>Engineering Leadership Toolkit — A2A endpoint</title>
+<style>body{font:16px/1.6 system-ui;max-width:44rem;margin:3rem auto;padding:0 1.25rem;color:#111}
+code{background:#f4f4f5;padding:.1em .35em;border-radius:3px}pre{background:#f4f4f5;padding:1rem;border-radius:6px;overflow-x:auto}
+li{margin:.4rem 0}a{color:#0b57d0}</style>
+<h1>Engineering Leadership Toolkit — A2A</h1>
+<p>An <a href="https://a2a-protocol.org">A2A v${A2A_PROTOCOL_VERSION}</a> JSON-RPC endpoint. Same services as the
+<a href="${ORIGIN}/mcp">MCP server</a>, same answers, either protocol. No authentication, and every skill is free to call
+(<a href="${ORIGIN}/auth.md">auth.md</a>).</p>
+<p>Agent card: <a href="${ORIGIN}/.well-known/agent-card.json">${ORIGIN}/.well-known/agent-card.json</a></p>
+<h2>Calling it</h2>
+<pre>curl -X POST ${ORIGIN}${A2A_PATH} \\
+  -H 'content-type: application/json' \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"SendMessage","params":{"message":{
+        "messageId":"1","role":"ROLE_USER",
+        "parts":[{"text":"{\\"skill\\":\\"assess_team_lead_readiness\\",\\"args\\":{}}"}]}}}'</pre>
+<p>Address a skill by sending that JSON as the message text, or by setting <code>skill</code> and
+<code>args</code> in the message metadata. The agent card publishes a JSON Schema for every skill's
+arguments, so you do not have to guess field names.</p>
+<h2>Skills</h2>
+<ul>
+${skills}
+</ul>`;
+}
+
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url);
+		const path = url.pathname.replace(/\/$/, "") || "/";
+
+		// A2A JSON-RPC. Must come before /mcp so neither shadows the other.
+		if (request.method === "POST" && path === A2A_PATH) {
+			const context = new ServerCallContext({
+				user: new UnauthenticatedUser(),
+				requestedVersion: request.headers.get("A2A-Version") ?? A2A_PROTOCOL_VERSION,
+			});
+			const result = await a2aTransportFor().handle(await request.text(), context);
+
+			if (isAsyncIterable(result)) {
+				const { readable, writable } = new TransformStream();
+				const writer = writable.getWriter();
+				const enc = new TextEncoder();
+				// Deliberately not awaited: awaiting would buffer the whole stream and defeat SSE.
+				ctx.waitUntil(
+					(async () => {
+						try {
+							for await (const ev of result) await writer.write(enc.encode(formatSSEEvent(ev)));
+						} finally {
+							await writer.close();
+						}
+					})(),
+				);
+				return new Response(readable, { headers: SSE_HEADERS });
+			}
+			return Response.json(result);
+		}
+
+		// Browsers, crawlers and registry health-checks get docs on the A2A paths. Same
+		// reasoning as /mcp below: these URLs are linked from the agent card and from
+		// registries, so they must not answer 404/406 to a plain GET.
+		if ((request.method === "GET" || request.method === "HEAD") && (path === "/a2a" || path === A2A_PATH)) {
+			const html = a2aDocsHtml();
+			return new Response(request.method === "HEAD" ? null : html, {
+				headers: {
+					"content-type": "text/html; charset=utf-8",
+					link: `<${ORIGIN}/a2a>; rel="canonical"`,
+				},
+			});
+		}
 
 		if (url.pathname === "/mcp" || url.pathname === "/mcp/") {
 			// Browsers/crawlers get the docs page; MCP clients (POST, or GET with

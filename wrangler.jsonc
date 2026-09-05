@@ -6,11 +6,18 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "eng-leadership-toolkit",
 	"main": "src/index.ts",
-	"compatibility_date": "2025-03-10",
+	// Bumped from 2025-03-10 (2026-09-05) for the A2A SDK, which is built against a much
+	// newer runtime. nodejs_compat was already on: @a2a-js/sdk's Part.fromJSON uses Buffer
+	// on its base64 branch.
+	"compatibility_date": "2026-09-04",
 	"compatibility_flags": ["nodejs_compat"],
 	"routes": [
 		{ "pattern": "www.marian.coach/mcp*", "zone_name": "marian.coach" },
 		{ "pattern": "marian.coach/mcp*", "zone_name": "marian.coach" },
+		// A2A v1.0. /mcp/mentoring* stays with the sibling Worker by most-specific-match;
+		// /a2a* overlaps nothing.
+		{ "pattern": "www.marian.coach/a2a*", "zone_name": "marian.coach" },
+		{ "pattern": "marian.coach/a2a*", "zone_name": "marian.coach" },
 	],
 	"migrations": [
 		{
