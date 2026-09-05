@@ -11,10 +11,8 @@
  * footer or name their own source page -- dispatch does that from the service's `sourcePath`,
  * so a handler can neither forget it nor attribute itself to the wrong page.
  *
- * Argument validation deliberately does NOT live here yet. MCP validates through
- * registerTool's schema, which is every caller today. It has to move here when the A2A
- * binding lands, because that path parses JSON and calls dispatch directly -- elc-trade
- * shipped exactly that gap and it let a skill grade an empty string.
+ * Arguments are validated here rather than at each transport, so MCP and A2A cannot enforce
+ * different contracts. See the comment on the parse in dispatch() for why that matters.
  */
 
 import { assess, LEVEL_BASELINE, PILLARS } from "../calculator";
@@ -40,13 +38,41 @@ import {
 import { EM_READINESS, PLAYBOOKS, TEAM_HEALTH_THRESHOLDS } from "../mentoring";
 import { estimateCoachingCost } from "../coaching-cost";
 import { buildBusinessCase, renderReport, type BusinessCaseInput } from "../business-case";
+import { z } from "zod";
 import { ALL_EM_SKILLS, ALL_SKILLS, SERVICES } from "./services";
-import type { ServiceResult } from "./types";
+import type { ServiceDefinition, ServiceResult } from "./types";
 
 export class UnknownServiceError extends Error {
 	constructor(id: string) {
 		super(`Unknown service "${id}".`);
 		this.name = "UnknownServiceError";
+	}
+}
+
+/**
+ * Carries the field list a caller needs to recover. A2A's AgentSkill has no inputSchema
+ * field, so an agent reading the card can see that a skill exists without any way to learn
+ * what it takes. The card publishes JSON Schema through an extension for that reason, but an
+ * agent that missed it should still be able to recover from one error rather than guessing.
+ */
+export class InvalidArgumentsError extends Error {
+	constructor(service: ServiceDefinition, cause: z.ZodError) {
+		const fields = Object.entries(service.inputSchema).map(([name, schema]) => {
+			const def = schema as z.ZodType;
+			const optional = def.safeParse(undefined).success;
+			return `  ${name}${optional ? " (optional)" : ""} — ${def.description ?? "no description"}`;
+		});
+		super(
+			[
+				`Invalid arguments for "${service.id}".`,
+				"",
+				...cause.issues.map((i) => `  ${i.path.join(".") || "(root)"}: ${i.message}`),
+				"",
+				"Accepted arguments:",
+				...fields,
+			].join("\n"),
+		);
+		this.name = "InvalidArgumentsError";
 	}
 }
 
@@ -301,5 +327,17 @@ export async function dispatch(
 	const handler = HANDLERS[id];
 	if (!handler) throw new Error(`Service "${id}" is advertised but has no handler.`);
 
-	return await handler(args);
+	// Validate HERE, not at the transport. MCP validates through registerTool's schema, but
+	// the A2A executor parses JSON and calls this directly — so without this the two
+	// transports enforce different contracts and A2A enforces none. elc-trade shipped exactly
+	// that gap: assess_speaker_readiness graded an empty string because its background field
+	// silently defaulted to "", and eleven testers never found the parameter.
+	//
+	// .strict() is the other half: an unknown key is now an error that names the valid ones,
+	// rather than being dropped in silence while the tool complains about what you did pass.
+	// Parsing also applies zod defaults, which the handlers below rely on.
+	const parsed = z.object(service.inputSchema).strict().safeParse(args);
+	if (!parsed.success) throw new InvalidArgumentsError(service, parsed.error);
+
+	return await handler(parsed.data as Record<string, unknown>);
 }

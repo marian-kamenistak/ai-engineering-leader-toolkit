@@ -8,7 +8,12 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { SERVICES } from "../src/core/services";
-import { dispatch, unimplementedServices, UnknownServiceError } from "../src/core/dispatch";
+import {
+	dispatch,
+	InvalidArgumentsError,
+	unimplementedServices,
+	UnknownServiceError,
+} from "../src/core/dispatch";
 
 describe("service registry", () => {
 	it("every advertised service has a handler", () => {
@@ -35,6 +40,46 @@ describe("service registry", () => {
 
 	it("rejects an unknown service by name", async () => {
 		await expect(dispatch("no_such_tool", {})).rejects.toBeInstanceOf(UnknownServiceError);
+	});
+});
+
+describe("argument validation", () => {
+	// This is the transport-parity guard. MCP validates through registerTool's schema; the
+	// A2A executor parses JSON and calls dispatch directly. Without validation HERE the two
+	// enforce different contracts and A2A enforces none.
+	it("rejects a missing required argument", async () => {
+		await expect(dispatch("get_one_on_one_playbook", {})).rejects.toBeInstanceOf(
+			InvalidArgumentsError,
+		);
+	});
+
+	it("names the accepted arguments so a caller can recover from one error", async () => {
+		const err = await dispatch("estimate_coaching_cost", {}).catch((e) => e as Error);
+		expect(err).toBeInstanceOf(InvalidArgumentsError);
+		expect(err.message).toContain('Invalid arguments for "estimate_coaching_cost"');
+		expect(err.message).toContain("Accepted arguments:");
+		// A2A's AgentSkill has no inputSchema field, so if the error does not name the
+		// fields the caller is reduced to guessing them.
+		for (const f of ["coaching_type", "client_role", "territory", "coach_seniority", "scope"]) {
+			expect(err.message, `error should name ${f}`).toContain(f);
+		}
+		expect(err.message).toContain("scope (optional)");
+	});
+
+	it("rejects an unknown key instead of silently dropping it", async () => {
+		const err = await dispatch("assess_team_lead_readiness", {
+			answer: {},
+		}).catch((e) => e as Error);
+		expect(err).toBeInstanceOf(InvalidArgumentsError);
+		// "answer" vs "answers" is the realistic typo, and dropping it silently would have
+		// returned the questionnaire as though nothing were wrong.
+		expect(err.message).toContain("answers");
+	});
+
+	it("applies zod defaults before the handler runs", async () => {
+		// The handlers rely on parsed data, so the parse has to happen upstream of them.
+		const r = await dispatch("build_mentoring_business_case", { role: "engineering_manager" });
+		expect(r.report.length).toBeGreaterThan(1000);
 	});
 });
 
