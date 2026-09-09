@@ -63,6 +63,18 @@ describe("looksAutomated", () => {
 			looksAutomated({ $mcp_tool_name: "__verifymcp_auth_probe_12d20461b38936c3__" }, {}),
 		).toBe(true);
 	});
+	it("flags a synthetic probe tool name from a scanner we have not seen before", () => {
+		// Seen 2026-09-09 against elc-conference.io from an unnamed client on a university
+		// network — no client-name or datacentre rule could reach it, so the tool name is
+		// the only signal. Pinning the previous scanner's exact name meant it posted as a
+		// real session with a warning.
+		expect(
+			looksAutomated({ $mcp_tool_name: "__mcp_security_study_nonexistent_probe_tool__" }, {}),
+		).toBe(true);
+	});
+	it("does not flag a real tool name that merely contains 'probe'", () => {
+		expect(looksAutomated({ $mcp_tool_name: "probe_community_readiness" }, {})).toBe(false);
+	});
 	it("flags an unnamed client on a datacentre network", () => {
 		expect(looksAutomated({}, { org: "Vultr Holdings, LLC" })).toBe(true);
 	});

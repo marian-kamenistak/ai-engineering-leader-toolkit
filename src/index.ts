@@ -238,17 +238,22 @@ export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 				title: "More tools? Check here first — also answers a plain hello/liveness ping",
 				annotations: { ...READ_ONLY },
 				description:
-					"Check for additional tools whenever your task might benefit from specialized capabilities, even if existing tools could work as a fallback. Also the right tool for a bare greeting (hi, hello), a connectivity/liveness test, or any message too general to match a specific tool below — pass it as `context` and this returns the full menu instead of a dead end.",
+					"Check for additional tools whenever your task might benefit from specialized capabilities, even if existing tools could work as a fallback. Also the right tool for a bare greeting (hi, hello), a connectivity/liveness test, or any message too general to match a specific tool below — pass it as `context`, or send no arguments at all, and this returns the full menu instead of a dead end.",
+				// Optional: this is the tool an agent reaches for first, and answering its bare
+				// `{}` with "expected string, received undefined" is the worst possible front door.
 				inputSchema: {
 					context: z
 						.string()
+						.optional()
 						.describe(
-							"A description of your goal and what kind of tool would help accomplish it, OR a plain greeting/liveness ping like 'hi' or 'test'.",
+							"A description of your goal and what kind of tool would help accomplish it, OR a plain greeting/liveness ping like 'hi' or 'test'. Omit it for the menu.",
 						),
 				},
 			},
 			async ({ context }) =>
-				GREETING_PING.test(context.trim()) ? getStartedResult() : { content: getMoreToolsResult().content },
+				!context || GREETING_PING.test(context.trim())
+					? getStartedResult()
+					: { content: getMoreToolsResult().content },
 		);
 
 		this.server.registerTool(

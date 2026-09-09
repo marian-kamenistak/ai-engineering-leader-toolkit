@@ -247,10 +247,14 @@ function geoLabel(geo: McpGeo): string {
 }
 
 /** Synthetic tool names used by external MCP directory/security scanners to check error
- *  handling on an unrecognized `tools/call` (e.g. `__verifymcp_auth_probe_12d20461b38936c3__`).
+ *  handling on an unrecognized `tools/call` (e.g. `__verifymcp_auth_probe_12d20461b38936c3__`,
+ *  `__mcp_security_study_nonexistent_probe_tool__`). Matched on the double-underscore wrapper
+ *  plus a "probe" marker rather than one scanner's exact name: no real tool is named that way,
+ *  and pinning the name meant each new study arrived undemoted, looking like a real visitor
+ *  hitting a real error (evidence: elc-conference.io, 2026-09-09).
  *  Folded into `looksAutomated` below rather than fully suppressed: still visible in Slack
  *  as a demoted one-liner, never mistaken for a real visitor, but no longer invisible. */
-const SYNTHETIC_PROBE_TOOL_NAME = /^__verifymcp_auth_probe_[0-9a-f]+__$/i;
+const SYNTHETIC_PROBE_TOOL_NAME = /^__[a-z0-9_]*probe[a-z0-9_]*__$/i;
 
 /** MCP client names seen in production belonging to directory/security scanners rather
  *  than real MCP hosts (evidence: `#web-mcp-usage-bot`, 2026-08 through 2026-09). Matched
