@@ -9,6 +9,13 @@ import {
 	type McpUsageEnv,
 } from "./mcp-usage";
 import {
+	ignoredNotice,
+	normalizeMcpRequest,
+	parseArgs,
+	permissiveShape,
+	type ParseResult,
+} from "./mcp-tolerant";
+import {
 	BUSINESS_CASE_INPUT_SHAPE,
 	buildBusinessCase,
 	renderReport,
@@ -172,6 +179,22 @@ function text(
 	};
 }
 
+/** Renders a `parseArgs` failure through the same envelope every other answer uses, so the
+ *  declared `outputSchema` still holds.
+ *
+ *  `probe` is the difference between a caller asking what the tool wants and a caller getting
+ *  it wrong, and the two deserve different answers. This server had the worst argument-failure
+ *  rates in the estate over the 30 days to 2026-09-11 (PostHog 214292) — `estimate_coaching_cost`
+ *  45% of calls, `build_mentoring_business_case` 38%, `calculate_engineering_manager_value` 32%,
+ *  `get_one_on_one_playbook` 29% — and nearly all of it was an agent guessing an enum value or
+ *  calling with no arguments to find out what the tool wants. The no-argument question is
+ *  answered as a normal result carrying the field menu; arguments supplied and rejected stay an
+ *  error. */
+function guidance(parsed: Extract<ParseResult<unknown>, { ok: false }>) {
+	const result = text(parsed.message, "/mcp");
+	return parsed.probe ? result : { ...result, isError: true as const };
+}
+
 /** Shared by both `get_started` and `get_more_tools`'s greeting branch (see below) — one
  *  source of truth for the menu text so the two entry points never drift apart. */
 function getStartedResult() {
@@ -198,6 +221,98 @@ const USAGE_CONFIG: McpUsageConfig = {
 	serverName: "eng-leadership-toolkit",
 	domain: "marian.coach",
 	posthogKey: "phc_xEinqUjuFui3wB6suwDFAMjQkF9g3G6GcrdqsZQ98dCW",
+};
+
+/* The real argument contracts. `registerTool` advertises `permissiveShape(…)` of each — every
+ * field optional, enums as plain strings — and the handler enforces the shape below through
+ * `parseArgs`. `build_mentoring_business_case` uses `BUSINESS_CASE_INPUT_SHAPE`, which already
+ * lives in `src/business-case.ts` because the `/mcp/business-case` JSON surface validates
+ * against it too. See `src/mcp-tolerant.ts` for why any of this exists. */
+
+const DEVELOPER_VALUE_SHAPE = {
+	level: z
+		.enum(["junior", "mid", "senior", "staff"])
+		.describe("The developer's current (or claimed) level — sets pillar weights and baseline"),
+	scores: z
+		.record(z.string(), z.number().min(0).max(10))
+		.optional()
+		.describe(
+			`Optional 0-10 score per skill. Valid keys: ${ALL_SKILLS.join(", ")}. Omitted skills use the level baseline (junior 3, mid 5, senior 6, staff 7).`,
+		),
+};
+
+const EM_VALUE_SHAPE = {
+	level: z
+		.enum(EM_LEVELS)
+		.describe(
+			"The leader's current (or claimed) level — sets pillar weights and baseline (team-lead, em, senior-em, director)",
+		),
+	track: z
+		.enum(EM_TRACKS)
+		.optional()
+		.describe(
+			"Optional context: what kind of teams they lead. Framing only — scoring is weighted by level, identically across tracks (same as the live tool)",
+		),
+	scores: z
+		.record(z.string(), z.number().min(0).max(10))
+		.optional()
+		.describe(
+			`Optional 0-10 score per skill. Valid keys: ${ALL_EM_SKILLS.join(", ")}. Omitted skills use the level baseline (team-lead 3, em 5, senior-em 6, director 7).`,
+		),
+};
+
+const TEAM_LEAD_READINESS_SHAPE = {
+	answers: z
+		.record(z.string(), z.number().int().min(0).max(3))
+		.optional()
+		.describe(
+			"Answers keyed by question id (q1-q17), each the 0-based index of the chosen option for that question (NOT a rating — option scores are calibrated and non-monotonic). Omit to receive the 17 questions with their options first.",
+		),
+};
+
+const BENCHMARKS_SHAPE = {
+	topic: z
+		.enum(["practice-stats", "mentee-mix", "topic-demand", "team-health-thresholds", "all"])
+		.optional()
+		.describe("Which benchmark set to return (default: all)"),
+};
+
+const MENTOR_COACH_SHAPE = {
+	situation: z
+		.string()
+		.optional()
+		.describe(
+			"Optional: the leader's situation in one sentence — the three-question test below maps it to a recommendation",
+		),
+};
+
+const PLAYBOOK_SHAPE = {
+	situation: z
+		.enum(PLAYBOOK_SITUATIONS)
+		.describe(
+			"Which situation: first-session (direction-setting template), underperformance (difficult conversation script), promotion-to-manager (timing signals + transition contract), better-one-on-ones (from status updates to growth), career-move (should-I-leave checklist)",
+		),
+};
+
+const COACHING_COST_SHAPE = {
+	coaching_type: z.enum(CC_TYPES).describe("What kind of coaching the client is buying"),
+	client_role: z
+		.enum(CC_ROLES)
+		.describe("The client's role — the same coach charges a VP more than an EM"),
+	territory: z
+		.enum(CC_TERRITORIES)
+		.describe("Where the coach operates — CEE runs at roughly half of US rates"),
+	coach_seniority: z
+		.enum(CC_COACH_LEVELS)
+		.describe(
+			"Coach seniority band: certified (ICF ACC level), experienced (PCC, 10+ yrs), top-tier (MCC / C-suite), practitioner-mentor (has held the client's role)",
+		),
+	scope: z
+		.enum(CC_SCOPES)
+		.optional()
+		.describe(
+			"Engagement length (default single-session) — longer commitments carry a 5-20% per-session discount",
+		),
 };
 
 export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
@@ -227,7 +342,11 @@ export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Call this for a greeting (hi, hello), a connectivity/liveness test, 'what can you do', or any message too general to match a specific tool below. Returns the full menu of real questions this server answers, each mapped to the tool name that answers it, so the next call can go straight to the right tool.",
-				inputSchema: {},
+				// `permissiveShape({})` rather than a bare `{}`: an empty shape leaves
+				// @posthog/mcp free to inject a REQUIRED `context`, so the front door of this
+				// server rejected the one call shape every agent tries first — `get_started`
+				// with no arguments at all.
+				inputSchema: permissiveShape({}),
 			},
 			async () => getStartedResult(),
 		);
@@ -264,21 +383,12 @@ export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Assess a software developer's market value: score 15 skills across 5 pillars (core craft, systems & judgment, impact & ownership, collaboration & influence, AI leverage), get a weighted total score, seniority level, and a 2026 Western-Europe gross salary estimate. Same logic as the live calculator at marian.coach. Unscored skills default to the level's baseline.",
-				inputSchema: {
-					level: z
-						.enum(["junior", "mid", "senior", "staff"])
-						.describe(
-							"The developer's current (or claimed) level — sets pillar weights and baseline",
-						),
-					scores: z
-						.record(z.string(), z.number().min(0).max(10))
-						.optional()
-						.describe(
-							`Optional 0-10 score per skill. Valid keys: ${ALL_SKILLS.join(", ")}. Omitted skills use the level baseline (junior 3, mid 5, senior 6, staff 7).`,
-						),
-				},
+				inputSchema: permissiveShape(DEVELOPER_VALUE_SHAPE),
 			},
-			async ({ level, scores }) => {
+			async (raw) => {
+				const parsed = parseArgs("calculate_developer_value", DEVELOPER_VALUE_SHAPE, raw);
+				if (!parsed.ok) return guidance(parsed);
+				const { level, scores } = parsed.data;
 				// Reject unknown skill ids rather than ignoring them. Until 2026-09-04 an
 				// unrecognised key — a typo, or a name copied from the EM calculator — was silently
 				// dropped, and the tool returned a fully confident salary built entirely on level
@@ -316,7 +426,7 @@ Estimated 2026 gross salary, Western Europe (Germany/Netherlands hubs): €${res
 Pillar scores:
 ${pillarLines}${note}
 
-For the interactive version with per-skill descriptions and a PDF report, use the live calculator.`,
+For the interactive version with per-skill descriptions and a PDF report, use the live calculator.${ignoredNotice("calculate_developer_value", parsed.ignored, DEVELOPER_VALUE_SHAPE)}`,
 					"/developer-salary-calculator/",
 					{
 						totalScore: result.totalScore,
@@ -335,27 +445,12 @@ For the interactive version with per-skill descriptions and a PDF report, use th
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Assess an engineering leader's market value: score 15 leadership skills across 5 pillars (people & talent, delivery & execution, technical direction, stakeholder influence, AI leverage), weighted by current level, get a total score, a level from Team Lead to Director/VP of Engineering, and a 2026 Western-Europe gross salary estimate. Same logic as the live EM salary calculator at marian.coach. Unscored skills default to the level's baseline.",
-				inputSchema: {
-					level: z
-						.enum(EM_LEVELS)
-						.describe(
-							"The leader's current (or claimed) level — sets pillar weights and baseline (team-lead, em, senior-em, director)",
-						),
-					track: z
-						.enum(EM_TRACKS)
-						.optional()
-						.describe(
-							"Optional context: what kind of teams they lead. Framing only — scoring is weighted by level, identically across tracks (same as the live tool)",
-						),
-					scores: z
-						.record(z.string(), z.number().min(0).max(10))
-						.optional()
-						.describe(
-							`Optional 0-10 score per skill. Valid keys: ${ALL_EM_SKILLS.join(", ")}. Omitted skills use the level baseline (team-lead 3, em 5, senior-em 6, director 7).`,
-						),
-				},
+				inputSchema: permissiveShape(EM_VALUE_SHAPE),
 			},
-			async ({ level, track, scores }) => {
+			async (raw) => {
+				const parsed = parseArgs("calculate_engineering_manager_value", EM_VALUE_SHAPE, raw);
+				if (!parsed.ok) return guidance(parsed);
+				const { level, track, scores } = parsed.data;
 				// See the matching guard in calculate_developer_value. Unknown skill ids used to be
 				// silently dropped, producing a confident salary built purely on baselines.
 				const unknownEmSkills = Object.keys(scores ?? {}).filter(
@@ -394,7 +489,7 @@ Estimated 2026 gross salary, Western Europe (Germany/Netherlands hubs): €${res
 Pillar scores:
 ${pillarLines}${note}
 
-For the interactive version with track-specific level descriptions and a PDF report, use the live calculator.`,
+For the interactive version with track-specific level descriptions and a PDF report, use the live calculator.${ignoredNotice("calculate_engineering_manager_value", parsed.ignored, EM_VALUE_SHAPE)}`,
 					"/engineering-manager-salary-calculator/",
 					{
 						totalScore: result.totalScore,
@@ -413,17 +508,14 @@ For the interactive version with track-specific level descriptions and a PDF rep
 				outputSchema: REPORT_OUTPUT,
 				description:
 					'Answers "should I become a team lead?" with the same 17-question test as the live tool at marian.coach: 6 dimensions (people appetite, letting go of code, ownership beyond your tickets, translation & saying no, motivation, org reality), a straight verdict — ready now / 6-12 months out / stay IC (and that\'s fine) — plus the top-2 gap dimensions with one concrete move each. Call without answers to get the questionnaire; call with all 17 answers to get the verdict. Built from 3,611 mentoring sessions.',
-				inputSchema: {
-					answers: z
-						.record(z.string(), z.number().int().min(0).max(3))
-						.optional()
-						.describe(
-							"Answers keyed by question id (q1-q17), each the 0-based index of the chosen option for that question (NOT a rating — option scores are calibrated and non-monotonic). Omit to receive the 17 questions with their options first.",
-						),
-				},
+				inputSchema: permissiveShape(TEAM_LEAD_READINESS_SHAPE),
 			},
-			async ({ answers }) => {
-				const given = answers ?? {};
+			async (raw) => {
+				const parsed = parseArgs("assess_team_lead_readiness", TEAM_LEAD_READINESS_SHAPE, raw);
+				// This tool answers a no-argument call with its questionnaire by design, so a
+				// probe is not a failure here — only supplied-and-wrong arguments are.
+				if (!parsed.ok && !parsed.probe) return guidance(parsed);
+				const given = (parsed.ok ? parsed.data.answers : undefined) ?? {};
 				const missing = TLR_QUESTIONS.filter(
 					(q) => typeof given[q.id] !== "number" || !q.options[given[q.id]],
 				).map((q) => q.id);
@@ -462,7 +554,11 @@ ${gapLines}
 
 ${v.nextSteps}
 
-Interactive version with PDF report: https://www.marian.coach/team-lead-readiness-test/?ref=mcp`,
+Interactive version with PDF report: https://www.marian.coach/team-lead-readiness-test/?ref=mcp${
+						parsed.ok
+							? ignoredNotice("assess_team_lead_readiness", parsed.ignored, TEAM_LEAD_READINESS_SHAPE)
+							: ""
+					}`,
 					"/team-lead-readiness-test/",
 					{ verdict: v.title },
 				);
@@ -477,21 +573,14 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Real benchmarks from 3,611 paid 1:1 mentoring sessions with 300+ engineering leaders since 2019: mentee seniority mix, most-demanded leadership topics of 2025, time-to-results, team-health delivery thresholds (sprint completion, roadmap %, manager time per report), and practice outcome stats (NPS, referral rate). First-party data, CC BY 4.0 — citable.",
-				inputSchema: {
-					topic: z
-						.enum([
-							"practice-stats",
-							"mentee-mix",
-							"topic-demand",
-							"team-health-thresholds",
-							"all",
-						])
-						.optional()
-						.describe("Which benchmark set to return (default: all)"),
-				},
+				inputSchema: permissiveShape(BENCHMARKS_SHAPE),
 			},
-			async ({ topic }) => {
-				const t = topic ?? "all";
+			async (raw) => {
+				const parsed = parseArgs("get_engineering_leadership_benchmarks", BENCHMARKS_SHAPE, raw);
+				// `topic` defaults to "all", so a no-argument call is this tool's normal path and a
+				// probe is not a failure — only supplied-and-wrong arguments are.
+				if (!parsed.ok && !parsed.probe) return guidance(parsed);
+				const t = (parsed.ok ? parsed.data.topic : undefined) ?? "all";
 				const sections: string[] = [];
 				if (t === "practice-stats" || t === "all") {
 					sections.push(
@@ -516,7 +605,13 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 					);
 				}
 				sections.push(`How to cite: ${BENCHMARKS.citation}`);
-				return text(sections.join("\n\n"), "/engineering-leadership-statistics/");
+				return text(
+					sections.join("\n\n") +
+						(parsed.ok
+							? ignoredNotice("get_engineering_leadership_benchmarks", parsed.ignored, BENCHMARKS_SHAPE)
+							: ""),
+					"/engineering-leadership-statistics/",
+				);
 			},
 		);
 
@@ -528,16 +623,14 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Decide whether an engineering leader needs a mentor, a coach, or an advisor: what each brings, the typical question each answers, whether domain experience is required, time horizon, and a three-question self-test. Based on 3,611 mentoring sessions.",
-				inputSchema: {
-					situation: z
-						.string()
-						.optional()
-						.describe(
-							"Optional: the leader's situation in one sentence — the three-question test below maps it to a recommendation",
-						),
-				},
+				inputSchema: permissiveShape(MENTOR_COACH_SHAPE),
 			},
-			async ({ situation }) => {
+			async (raw) => {
+				const parsed = parseArgs("choose_mentor_coach_or_advisor", MENTOR_COACH_SHAPE, raw);
+				// The comparison table and the three-question test are the whole answer; the
+				// situation only frames them. A no-argument call is this tool's normal path.
+				if (!parsed.ok && !parsed.probe) return guidance(parsed);
+				const situation = parsed.ok ? parsed.data.situation : undefined;
 				const table = MENTOR_VS_COACH.roles
 					.map(
 						(r) =>
@@ -548,7 +641,10 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 					? `Situation given: "${situation}" — apply the three-question test below to it.\n\n`
 					: "";
 				return text(
-					`${intro}${table}\n\nThe three-question test:\n${MENTOR_VS_COACH.threeQuestionTest.join("\n")}\n\nContext: ${MENTOR_VS_COACH.context}`,
+					`${intro}${table}\n\nThe three-question test:\n${MENTOR_VS_COACH.threeQuestionTest.join("\n")}\n\nContext: ${MENTOR_VS_COACH.context}` +
+						(parsed.ok
+							? ignoredNotice("choose_mentor_coach_or_advisor", parsed.ignored, MENTOR_COACH_SHAPE)
+							: ""),
 					"/mentor-vs-coach/",
 				);
 			},
@@ -562,17 +658,18 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Situation-specific 1:1 scripts and templates from Marian Kamenistak's mentoring practice: first mentoring/direction-setting session, underperformance conversation, promoting a developer to manager, fixing status-update 1:1s, and the 10-question career-move checklist. These are the actual templates used across 3,611 sessions.",
-				inputSchema: {
-					situation: z
-						.enum(PLAYBOOK_SITUATIONS)
-						.describe(
-							"Which situation: first-session (direction-setting template), underperformance (difficult conversation script), promotion-to-manager (timing signals + transition contract), better-one-on-ones (from status updates to growth), career-move (should-I-leave checklist)",
-						),
-				},
+				inputSchema: permissiveShape(PLAYBOOK_SHAPE),
 			},
-			async ({ situation }) => {
+			async (raw) => {
+				const parsed = parseArgs("get_one_on_one_playbook", PLAYBOOK_SHAPE, raw);
+				if (!parsed.ok) return guidance(parsed);
+				const { situation } = parsed.data;
 				const p = PLAYBOOKS[situation];
-				return text(`${p.title}\n\n${p.body}`, "/engineering-manager-mentor/");
+				return text(
+					`${p.title}\n\n${p.body}` +
+						ignoredNotice("get_one_on_one_playbook", parsed.ignored, PLAYBOOK_SHAPE),
+					"/engineering-manager-mentor/",
+				);
 			},
 		);
 
@@ -584,7 +681,9 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Guidance for the IC→manager transition: the EM responsibility triangle (leadership/processes/delivery — pick two), the six most common first-time-manager failure modes, readiness self-check questions, and what the first months should look like. 52% of Marian's 300+ mentees arrive exactly at this transition.",
-				inputSchema: {},
+				// Same reason as `get_started` above: a bare `{}` is not an empty contract, it is
+				// an opening for @posthog/mcp's injected REQUIRED `context`.
+				inputSchema: permissiveShape({}),
 			},
 			async () => {
 				return text(
@@ -611,31 +710,16 @@ ${EM_READINESS.firstMonths}`,
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Fair market rate for coaching or mentoring in 2026, by coaching type, client role, coach territory, coach seniority, and engagement length. Returns a per-session range, program total, and red flags (too cheap / brand margin). Anchored to ICF Global Coaching Study 2025, Tandem Coach 2026 credential bands, and CEE market survey data. Same logic as the live calculator at marian.coach.",
-				inputSchema: {
-					coaching_type: z
-						.enum(CC_TYPES)
-						.describe("What kind of coaching the client is buying"),
-					client_role: z
-						.enum(CC_ROLES)
-						.describe("The client's role — the same coach charges a VP more than an EM"),
-					territory: z
-						.enum(CC_TERRITORIES)
-						.describe("Where the coach operates — CEE runs at roughly half of US rates"),
-					coach_seniority: z
-						.enum(CC_COACH_LEVELS)
-						.describe(
-							"Coach seniority band: certified (ICF ACC level), experienced (PCC, 10+ yrs), top-tier (MCC / C-suite), practitioner-mentor (has held the client's role)",
-						),
-					scope: z
-						.enum(CC_SCOPES)
-						.optional()
-						.describe(
-							"Engagement length (default single-session) — longer commitments carry a 5-20% per-session discount",
-						),
-				},
+				inputSchema: permissiveShape(COACHING_COST_SHAPE),
 			},
-			async (input) => {
-				return text(estimateCoachingCost(input), "/coaching-cost-calculator/");
+			async (raw) => {
+				const parsed = parseArgs("estimate_coaching_cost", COACHING_COST_SHAPE, raw);
+				if (!parsed.ok) return guidance(parsed);
+				return text(
+					estimateCoachingCost(parsed.data) +
+						ignoredNotice("estimate_coaching_cost", parsed.ignored, COACHING_COST_SHAPE),
+					"/coaching-cost-calculator/",
+				);
 			},
 		);
 
@@ -647,29 +731,36 @@ ${EM_READINESS.firstMonths}`,
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Build the case that gets your company to pay for leadership mentoring — everything on marian.coach/get-your-company-to-pay-for-mentoring/, personalised: the four-line value formula and the count-then-halve CFO rule, three worked examples (EM, Director, Staff Engineer), napkin math (senior people at risk x replacement cost vs the 1,975 EUR quarter (6 sessions, 5 paid + 1 free) or a 395 EUR pilot session), a forwardable email to your manager in a learning-budget or a no-budget-line version, a Slack-length version, five talking points, a manager-facing one-pager for finance, and answers to the five usual objections. English or Czech, tykani or vykani. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,611 mentoring sessions at marian.coach.",
-				inputSchema: BUSINESS_CASE_INPUT_SHAPE,
+				inputSchema: permissiveShape(BUSINESS_CASE_INPUT_SHAPE),
 			},
-			async (input) => {
-				const bc = buildBusinessCase(input as BusinessCaseInput);
-				return text(renderReport(bc), "/pricing/#business-case", {
-					email: bc.email,
-					slackShort: bc.slack_short,
-					talkingPoints: bc.talking_points,
-					onePager: bc.one_pager,
-					math: {
-						lines: bc.math.lines,
-						totalEur: bc.math.total_eur,
-						discountedEur: bc.math.discounted_eur,
-						askEur: bc.math.ask_eur,
-						packPriceEur: bc.math.pack_price_eur,
-						roiMultiple: bc.math.roi_multiple,
-						note: bc.math.note,
+			async (raw) => {
+				const parsed = parseArgs("build_mentoring_business_case", BUSINESS_CASE_INPUT_SHAPE, raw);
+				if (!parsed.ok) return guidance(parsed);
+				const bc = buildBusinessCase(parsed.data as BusinessCaseInput);
+				return text(
+					renderReport(bc) +
+						ignoredNotice("build_mentoring_business_case", parsed.ignored, BUSINESS_CASE_INPUT_SHAPE),
+					"/pricing/#business-case",
+					{
+						email: bc.email,
+						slackShort: bc.slack_short,
+						talkingPoints: bc.talking_points,
+						onePager: bc.one_pager,
+						math: {
+							lines: bc.math.lines,
+							totalEur: bc.math.total_eur,
+							discountedEur: bc.math.discounted_eur,
+							askEur: bc.math.ask_eur,
+							packPriceEur: bc.math.pack_price_eur,
+							roiMultiple: bc.math.roi_multiple,
+							note: bc.math.note,
+						},
+						objections: bc.objections,
+						evidence: bc.evidence,
+						valueFormula: bc.value_formula,
+						workedExamples: bc.worked_examples,
 					},
-					objections: bc.objections,
-					evidence: bc.evidence,
-					valueFormula: bc.value_formula,
-					workedExamples: bc.worked_examples,
-				});
+				);
 			},
 		);
 	}
@@ -766,8 +857,12 @@ export default {
 			}
 			// Hand the edge request's geography to the Durable Object. `request.cf` only
 			// exists out here; McpAgent forwards ctx.props through to `this.props`.
+			// This MUST run before normalizeMcpRequest, which rebuilds the Request and drops `cf`.
 			(ctx as ExecutionContext & { props?: McpGeo }).props = geoFromRequest(request);
-			return EngLeadershipToolkit.serve("/mcp").fetch(request, env, ctx);
+			// The MCP spec makes `params.arguments` optional on tools/call; the SDK does not.
+			// See normalizeToolCallBody in src/mcp-tolerant.ts.
+			const normalized = await normalizeMcpRequest(request);
+			return EngLeadershipToolkit.serve("/mcp").fetch(normalized, env, ctx);
 		}
 
 		// JSON surface for the marian.coach business-case wizard (same core as the MCP tool).

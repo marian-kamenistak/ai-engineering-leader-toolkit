@@ -28,9 +28,11 @@
  * `McpServer` per request via `createMcpHandler`) resolves grouping identically, so there
  * is no more `stateless` flag or in-memory session map to maintain.
  *
- * A session/conversation shaped like an automated scanner (known probe client names, or
- * an unnamed client on a datacentre network) is demoted to a single flat Slack line with
- * no thread — still visible for audit, never mistaken for a real visitor.
+ * A session/conversation shaped like an automated scanner is demoted to a single flat Slack
+ * line with no thread — still visible for audit, never mistaken for a real visitor. Four
+ * signals feed that: a known probe client name, a probe-shaped client name, a synthetic probe
+ * tool name, and a penetration-scan tool name (`delete_user`, `run_shell`, …) which is the
+ * only one of the four a scanner cannot disguise by renaming itself or changing network.
  *
  * @posthog/mcp is pinned EXACTLY (not caret). It is pre-1.0 and ships breaking changes in
  * minor 0.x releases; a caret range would let one land silently on the next npm install.
@@ -240,6 +242,14 @@ function clientLabel(props: Record<string, unknown>): string {
 	return version ? `${name} ${version}` : name;
 }
 
+/** Two servers front the same property, so the domain alone does not say which one was
+ *  called: `eng-leadership-toolkit` and `mentoring-inquiry-builder` both announced themselves
+ *  as "marian.coach MCP", and `elc-toolkit`, `elc-partnership-builder` and `elc-trade` all
+ *  as "engineeringleaders.io MCP". Reading the channel, you could not tell them apart. */
+function serverLabel(config: McpUsageConfig): string {
+	return `${config.domain} MCP · ${config.serverName}`;
+}
+
 function geoLabel(geo: McpGeo): string {
 	const place = [geo.city, geo.country].filter(Boolean).join(", ");
 	if (!place && !geo.org) return "";
@@ -256,11 +266,44 @@ function geoLabel(geo: McpGeo): string {
  *  as a demoted one-liner, never mistaken for a real visitor, but no longer invisible. */
 const SYNTHETIC_PROBE_TOOL_NAME = /^__[a-z0-9_]*probe[a-z0-9_]*__$/i;
 
-/** MCP client names seen in production belonging to directory/security scanners rather
- *  than real MCP hosts (evidence: `#web-mcp-usage-bot`, 2026-08 through 2026-09). Matched
- *  as a prefix so a version suffix ("mcp-dataset-probe/0.1") still matches. */
+/** MCP client names seen in production belonging to directory listings, uptime monitors and
+ *  security scanners rather than real MCP hosts. Matched as a prefix so a version suffix
+ *  ("mcp-dataset-probe/0.1") still matches.
+ *
+ *  Extended 2026-09-11 from 30 days of `$mcp_initialize` (PostHog 180652): the original list
+ *  covered six names and missed every crawler actually generating load. `glimind-probe` (2,425
+ *  handshakes), `glama` (1,432), `mcpbeat` (1,415), `zevruna` (739), `meshdns-health` (429),
+ *  `smithery-probe` (184) and `agent-tools.cloud` (155) were all passing as real visitors, and
+ *  `rokmcp-probe` and `agentstatus-probe` were posting full threaded Slack sessions.
+ *
+ *  Deliberately NOT here: our own verification harnesses (`usability-test`, `argshape-check`,
+ *  `plan1-verify-*`, `deploy-verify`). Those are not visitors either, but demoting them would
+ *  hide exactly the runs we use to prove a deploy worked. */
 const KNOWN_PROBE_CLIENT_NAMES =
-	/^(verifymcp-probe|mcp-dataset-probe|mcp-vouch|mcp-scan|cracked-probe|probe)\b/i;
+	/^(verifymcp-probe|mcp-dataset-probe|mcp-vouch|mcp-scan|mcpscan|mcpindex|mcpbeat|cracked-probe|probe|glama|glimind|zevruna|meshdns|smithery|agent-tools\.cloud|proofbench|reliability-bureau|factanker|uptime|agentstatus|rokmcp|ps-mcp-tools)\b/i;
+
+/** Catches the next monitor before it needs a code change: a client that calls itself a probe,
+ *  scan, inspector, monitor or health check is telling us what it is. Matched as a token
+ *  ANYWHERE in the name, not just as a suffix — `glama-mcp-inspector` and
+ *  `agent-evidence-scanner` both carry it in the middle.
+ *
+ *  Kept to words that no real MCP host would put in its name. Deliberately excluded: `index`,
+ *  `trust`, `bench`, `spike` — each appeared in a real crawler name here, and each is plausible
+ *  in a genuine product name, so they are pinned by the explicit list above instead. */
+const PROBE_SHAPED_CLIENT_NAME =
+	/(^|[-_.])(probe|scan|scanner|inspector|monitor|healthcheck|uptime|crawler)([-_.]|$)/i;
+
+/** Tool names that belong to no server in this estate and only ever appear in penetration
+ *  scans. Evidence: `elc-conference-mcp-tickets` took exactly 9 calls each of `delete_user`,
+ *  `run_shell`, `drop_table`, `transfer_money`, `read_secrets`, `admin_login`, `get_api_key`
+ *  and a dozen more on 2026-09-10, from an unnamed client on a *residential* ASN — so the
+ *  "unnamed + datacentre" rule below could not see it, and 141 scanner calls landed in Slack
+ *  as one threaded conversation that looked like a real visitor.
+ *
+ *  Matching the tool name rather than the client is what makes this work: the scanner controls
+ *  its client name and its network, but the whole point of its visit is to call these. */
+const SCANNER_TOOL_NAMES =
+	/^(delete_user|delete_database|drop_table|run_sql|run_shell|execute_command|sudo|admin_login|reset_password|read_secrets|get_api_key|get_env|get_config|read_file|write_file|list_files|send_payment|transfer_money|debug_info)$/i;
 
 /** Network-operator hints that mean "datacentre/hosting", not a residential or corporate
  *  ISP — used only when the client also sent no name, since a named client is judged by
@@ -275,7 +318,10 @@ const DATACENTRE_ORG_HINTS =
 export function looksAutomated(props: Record<string, unknown>, geo: McpGeo): boolean {
 	const name = (props.$mcp_client_name as string | undefined) ?? "";
 	if (KNOWN_PROBE_CLIENT_NAMES.test(name)) return true;
-	if (SYNTHETIC_PROBE_TOOL_NAME.test((props.$mcp_tool_name as string) ?? "")) return true;
+	if (PROBE_SHAPED_CLIENT_NAME.test(name)) return true;
+	const toolName = (props.$mcp_tool_name as string) ?? "";
+	if (SYNTHETIC_PROBE_TOOL_NAME.test(toolName)) return true;
+	if (SCANNER_TOOL_NAMES.test(toolName)) return true;
 	const unnamed = !name || name === "unknown client";
 	if (unnamed && geo.org && DATACENTRE_ORG_HINTS.test(geo.org)) return true;
 	return false;
@@ -359,7 +405,7 @@ export async function postSessionUpdate(
 
 	if (!existing) {
 		const parentText =
-			`:electric_plug: *${config.domain} MCP* — new session\n` +
+			`:electric_plug: *${serverLabel(config)}* — new session\n` +
 			`Client: ${clientLabel(props)}${geoLabel(geo)}\n${detail}`;
 		const res = await slack(env, "chat.postMessage", { text: parentText });
 		// No ts (Slack down, bot not in channel) means no thread to hang replies off.
@@ -384,8 +430,15 @@ export async function postSessionUpdate(
 
 /** One flat line, no thread — for a call that looks automated (see `looksAutomated`).
  *  Still visible in the channel for audit; never grouped as if it were a real visitor. */
-export async function postDemoted(env: McpUsageEnv, props: Record<string, unknown>, geo: McpGeo): Promise<void> {
-	await slack(env, "chat.postMessage", { text: `• probe · ${clientLabel(props)}${geoLabel(geo)}` });
+export async function postDemoted(
+	env: McpUsageEnv,
+	config: McpUsageConfig,
+	props: Record<string, unknown>,
+	geo: McpGeo,
+): Promise<void> {
+	await slack(env, "chat.postMessage", {
+		text: `• probe · ${config.serverName} · ${clientLabel(props)}${geoLabel(geo)}`,
+	});
 }
 
 /** Fallback when no `MCP_SESSIONS` KV binding is configured (e.g. a repo mid-rollout, or
@@ -398,7 +451,7 @@ export async function postUngrouped(
 	geo: McpGeo,
 	note: CallNote,
 ): Promise<void> {
-	const text = `:electric_plug: *${config.domain} MCP*\nClient: ${clientLabel(props)}${geoLabel(geo)}\n${formatDetail(note)}`;
+	const text = `:electric_plug: *${serverLabel(config)}*\nClient: ${clientLabel(props)}${geoLabel(geo)}\n${formatDetail(note)}`;
 	await slack(env, "chat.postMessage", { text });
 }
 
@@ -472,6 +525,25 @@ export function instrumentMcpUsage({ server, config, env, geo = {}, waitUntil }:
 		// tracking would double-count without adding a signal.
 		enableExceptionAutocapture: false,
 
+		// `context: true` above only injects the parameter into tools that do not already
+		// declare one — `analytics-parameters.mjs:canInjectAnalyticsParameter` skips injection
+		// when the property is present. `permissiveShape()` in `mcp-tolerant.ts` declares it
+		// deliberately, so that an agent calling a tool with no arguments at all gets an answer
+		// instead of "expected string, received undefined" from a required `context` it never
+		// knew about. That was 34 of the 40 `get_more_tools` failures in the 30 days to
+		// 2026-09-11, on the one tool an agent reaches for FIRST.
+		//
+		// The cost of owning the parameter is that the SDK stops reading it as intent
+		// (`resolveToolCallIntent` only trusts `context` when analytics owns it), which would
+		// silently drop `$mcp_intent` — the single most valuable property here. This hook hands
+		// it back. The only visible difference is `$mcp_intent_source` reading `inferred`
+		// rather than `context_parameter`.
+		intentFallback: (request) => {
+			const args = (request as { params?: { arguments?: Record<string, unknown> } }).params?.arguments;
+			const context = args?.context;
+			return typeof context === "string" && context.trim() ? context : null;
+		},
+
 		beforeSend: (event) => {
 			const props = event.properties ?? {};
 			const eventName = event.event;
@@ -494,7 +566,7 @@ export function instrumentMcpUsage({ server, config, env, geo = {}, waitUntil }:
 
 				let p: Promise<void>;
 				if (looksAutomated(props, geo)) {
-					p = postDemoted(env, props, geo);
+					p = postDemoted(env, config, props, geo);
 				} else if (env.MCP_SESSIONS) {
 					const kv = env.MCP_SESSIONS;
 					const key = conversationKey(config.serverName, props, geo);

@@ -201,7 +201,11 @@ describe("postDemoted / postUngrouped", () => {
 	afterEach(() => vi.unstubAllGlobals());
 
 	it("postDemoted does not throw for a probe-shaped call", async () => {
-		await expect(postDemoted(env, { $mcp_client_name: "mcp-vouch" }, {})).resolves.toBeUndefined();
+		// Takes `config` since 2026-09-11: a demoted line now names the server it was aimed at,
+		// because three servers front engineeringleaders.io and the line could not say which.
+		await expect(
+			postDemoted(env, config, { $mcp_client_name: "mcp-vouch" }, {}),
+		).resolves.toBeUndefined();
 	});
 
 	it("postUngrouped does not throw when no KV binding exists", async () => {
