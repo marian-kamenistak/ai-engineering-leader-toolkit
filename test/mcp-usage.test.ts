@@ -63,6 +63,18 @@ describe("looksAutomated", () => {
 			looksAutomated({ $mcp_tool_name: "__verifymcp_auth_probe_12d20461b38936c3__" }, {}),
 		).toBe(true);
 	});
+	it("flags a synthetic probe tool name from a scanner we have not seen before", () => {
+		// Seen 2026-09-09 against elc-conference.io from an unnamed client on a university
+		// network — no client-name or datacentre rule could reach it, so the tool name is
+		// the only signal. Pinning the previous scanner's exact name meant it posted as a
+		// real session with a warning.
+		expect(
+			looksAutomated({ $mcp_tool_name: "__mcp_security_study_nonexistent_probe_tool__" }, {}),
+		).toBe(true);
+	});
+	it("does not flag a real tool name that merely contains 'probe'", () => {
+		expect(looksAutomated({ $mcp_tool_name: "probe_community_readiness" }, {})).toBe(false);
+	});
 	it("flags an unnamed client on a datacentre network", () => {
 		expect(looksAutomated({}, { org: "Vultr Holdings, LLC" })).toBe(true);
 	});
@@ -189,7 +201,11 @@ describe("postDemoted / postUngrouped", () => {
 	afterEach(() => vi.unstubAllGlobals());
 
 	it("postDemoted does not throw for a probe-shaped call", async () => {
-		await expect(postDemoted(env, { $mcp_client_name: "mcp-vouch" }, {})).resolves.toBeUndefined();
+		// Takes `config` since 2026-09-11: a demoted line now names the server it was aimed at,
+		// because three servers front engineeringleaders.io and the line could not say which.
+		await expect(
+			postDemoted(env, config, { $mcp_client_name: "mcp-vouch" }, {}),
+		).resolves.toBeUndefined();
 	});
 
 	it("postUngrouped does not throw when no KV binding exists", async () => {

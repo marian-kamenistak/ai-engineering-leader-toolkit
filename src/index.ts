@@ -9,6 +9,13 @@ import {
 	type McpUsageEnv,
 } from "./mcp-usage";
 import {
+	ignoredNotice,
+	normalizeMcpRequest,
+	parseArgs,
+	permissiveShape,
+	type ParseResult,
+} from "./mcp-tolerant";
+import {
 	BUSINESS_CASE_INPUT_SHAPE,
 	buildBusinessCase,
 	wizardOptions,
@@ -149,6 +156,22 @@ function text(
 	};
 }
 
+/** Renders a `parseArgs` failure through the same envelope every other answer uses, so the
+ *  declared `outputSchema` still holds.
+ *
+ *  `probe` is the difference between a caller asking what the tool wants and a caller getting
+ *  it wrong, and the two deserve different answers. This server had the worst argument-failure
+ *  rates in the estate over the 30 days to 2026-09-11 (PostHog 214292) — `estimate_coaching_cost`
+ *  45% of calls, `build_mentoring_business_case` 38%, `calculate_engineering_manager_value` 32%,
+ *  `get_one_on_one_playbook` 29% — and nearly all of it was an agent guessing an enum value or
+ *  calling with no arguments to find out what the tool wants. The no-argument question is
+ *  answered as a normal result carrying the field menu; arguments supplied and rejected stay an
+ *  error. */
+function guidance(parsed: Extract<ParseResult<unknown>, { ok: false }>) {
+	const result = text(parsed.message, "/mcp");
+	return parsed.probe ? result : { ...result, isError: true as const };
+}
+
 /** Shared by both `get_started` and `get_more_tools`'s greeting branch (see below) — one
  *  source of truth for the menu text so the two entry points never drift apart. */
 function getStartedResult() {
@@ -204,7 +227,11 @@ export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 				outputSchema: REPORT_OUTPUT,
 				description:
 					"Call this for a greeting (hi, hello), a connectivity/liveness test, 'what can you do', or any message too general to match a specific tool below. Returns the full menu of real questions this server answers, each mapped to the tool name that answers it, so the next call can go straight to the right tool.",
-				inputSchema: {},
+				// `permissiveShape({})` rather than a bare `{}`: an empty shape leaves
+				// @posthog/mcp free to inject a REQUIRED `context`, so the front door of this
+				// server rejected the one call shape every agent tries first — `get_started`
+				// with no arguments at all.
+				inputSchema: permissiveShape({}),
 			},
 			async () => getStartedResult(),
 		);
@@ -215,23 +242,37 @@ export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 				title: "More tools? Check here first — also answers a plain hello/liveness ping",
 				annotations: { ...READ_ONLY },
 				description:
-					"Check for additional tools whenever your task might benefit from specialized capabilities, even if existing tools could work as a fallback. Also the right tool for a bare greeting (hi, hello), a connectivity/liveness test, or any message too general to match a specific tool below — pass it as `context` and this returns the full menu instead of a dead end.",
+					"Check for additional tools whenever your task might benefit from specialized capabilities, even if existing tools could work as a fallback. Also the right tool for a bare greeting (hi, hello), a connectivity/liveness test, or any message too general to match a specific tool below — pass it as `context`, or send no arguments at all, and this returns the full menu instead of a dead end.",
+				// Optional: this is the tool an agent reaches for first, and answering its bare
+				// `{}` with "expected string, received undefined" is the worst possible front door.
 				inputSchema: {
 					context: z
 						.string()
+						.optional()
 						.describe(
-							"A description of your goal and what kind of tool would help accomplish it, OR a plain greeting/liveness ping like 'hi' or 'test'.",
+							"A description of your goal and what kind of tool would help accomplish it, OR a plain greeting/liveness ping like 'hi' or 'test'. Omit it for the menu.",
 						),
 				},
 			},
 			async ({ context }) =>
-				GREETING_PING.test(context.trim()) ? getStartedResult() : { content: getMoreToolsResult().content },
+				!context || GREETING_PING.test(context.trim())
+					? getStartedResult()
+					: { content: getMoreToolsResult().content },
 		);
 
 		// Every domain tool comes from the registry. Adding one means adding a
 		// ServiceDefinition in core/services.ts and a handler in core/dispatch.ts -- never
 		// another registerTool call here, which is how the descriptions drifted before.
+		//
+		// `registerTool` advertises `permissiveShape(…)` of the registry's real shape — every
+		// field optional, enums as plain strings — and the handler enforces the real shape
+		// through `parseArgs`, once, here. See `src/mcp-tolerant.ts` for why.
 		for (const service of SERVICES) {
+			// A tool whose every argument is optional (the readiness questionnaire, benchmarks,
+			// mentor-vs-coach, first-time-manager guidance) answers a no-argument call as its
+			// normal path, so a probe is not a failure there — only supplied-and-wrong
+			// arguments are. Everywhere else the probe gets the field menu.
+			const acceptsNoArgs = z.object(service.inputSchema).safeParse({}).success;
 			this.server.registerTool(
 				service.id,
 				{
@@ -239,11 +280,19 @@ export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 					annotations: { ...READ_ONLY },
 					outputSchema: REPORT_OUTPUT,
 					description: service.description,
-					inputSchema: service.inputSchema,
+					inputSchema: permissiveShape(service.inputSchema),
 				},
-				async (args: Record<string, unknown>) => {
-					const r = await dispatch(service.id, args);
-					return text(r.report, service.sourcePath, r.data);
+				async (raw: Record<string, unknown>) => {
+					const parsed = parseArgs(service.id, service.inputSchema, raw);
+					if (!parsed.ok && !(parsed.probe && acceptsNoArgs)) return guidance(parsed);
+					const r = await dispatch(
+						service.id,
+						parsed.ok ? (parsed.data as Record<string, unknown>) : {},
+					);
+					const ignored = parsed.ok
+						? ignoredNotice(service.id, parsed.ignored, service.inputSchema)
+						: "";
+					return text(r.report + ignored, service.sourcePath, r.data);
 				},
 			);
 		}
@@ -377,8 +426,12 @@ export default {
 			}
 			// Hand the edge request's geography to the Durable Object. `request.cf` only
 			// exists out here; McpAgent forwards ctx.props through to `this.props`.
+			// This MUST run before normalizeMcpRequest, which rebuilds the Request and drops `cf`.
 			(ctx as ExecutionContext & { props?: McpGeo }).props = geoFromRequest(request);
-			return EngLeadershipToolkit.serve("/mcp").fetch(request, env, ctx);
+			// The MCP spec makes `params.arguments` optional on tools/call; the SDK does not.
+			// See normalizeToolCallBody in src/mcp-tolerant.ts.
+			const normalized = await normalizeMcpRequest(request);
+			return EngLeadershipToolkit.serve("/mcp").fetch(normalized, env, ctx);
 		}
 
 		// JSON surface for the marian.coach business-case wizard (same core as the MCP tool).
