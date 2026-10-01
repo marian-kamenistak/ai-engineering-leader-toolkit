@@ -276,13 +276,13 @@ export const TLR_VERDICTS: Record<
 		title: "Ready now.",
 		body: "You are already doing parts of the job, the appetite is real, and a seat exists. That combination does not last: make the ask explicit before someone less ready and more vocal does. 52% of the leaders I mentor started exactly here, usually promoted for engineering skill and left alone with the people part. Do not skip your two gaps below, they are the part nobody will warn you about.",
 		nextSteps:
-			"Next steps: make the ask, then read the first-90-days guide (https://www.marian.coach/blog/the-first-90-days-as-engineering-manager/) before day one. When the people part gets real, that is what 1:1 mentoring for new leads and EMs is for: https://www.marian.coach/engineering-manager-mentor/ — the intro session is free.",
+			"Next steps: make the ask, then read the 30-60-90-day guide (https://www.marian.coach/blog/guide-to-leading-your-new-dev-team/) before day one. When the people part gets real, that is what 1:1 mentoring for new leads and EMs is for: https://www.marian.coach/engineering-manager-mentor/ — the intro session is free.",
 	},
 	months: {
 		title: "6 to 12 months out.",
 		body: "The direction is right, some muscles are not there yet, and that is the normal state before a first lead role. The difference between drifting into the title and walking into it is closing the two gaps below on purpose. Do the two moves, then re-take this test in a quarter.",
 		nextSteps:
-			"Next steps: the team lead role guide (https://www.marian.coach/blog/team-lead-role-vs-tech-lead-vs-engineering-manager/) shows what the three versions of the job actually own, and the first-90-days guide (https://www.marian.coach/blog/the-first-90-days-as-engineering-manager/) shows what is coming. Want the gaps closed with someone who has watched this transition 300+ times? https://www.marian.coach/engineering-manager-mentor/",
+			"Next steps: the team lead role guide (https://www.marian.coach/blog/team-lead-role-vs-tech-lead-vs-engineering-manager/) shows what the three versions of the job actually own, and the 30-60-90-day guide (https://www.marian.coach/blog/guide-to-leading-your-new-dev-team/) shows what is coming. Want the gaps closed with someone who has watched this transition 300+ times? https://www.marian.coach/engineering-manager-mentor/",
 	},
 	ic: {
 		title: "Stay IC. And that is fine.",
