@@ -1,28 +1,32 @@
 {
-  "name": "ai-engineering-leader-toolkit",
-  "version": "1.7.0",
-  "private": true,
-  "scripts": {
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "format": "oxfmt --write .",
-    "lint:fix": "oxlint --fix",
-    "start": "wrangler dev",
-    "cf-typegen": "wrangler types",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@posthog/mcp": "0.11.7",
-    "agents": "^0.17.1",
-    "posthog-node": "5.51.2",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "oxfmt": "^0.56.0",
-    "oxlint": "^1.71.0",
-    "typescript": "6.0.3",
-    "vitest": "^3.2.7",
-    "wrangler": "^4.105.0"
-  }
+	"name": "ai-engineering-leader-toolkit",
+	"version": "1.7.0",
+	"private": true,
+	"scripts": {
+		"deploy": "npm run card:check && wrangler deploy",
+		"dev": "wrangler dev",
+		"format": "oxfmt --write .",
+		"lint:fix": "oxlint --fix",
+		"start": "wrangler dev",
+		"cf-typegen": "wrangler types",
+		"type-check": "tsc --noEmit",
+		"test": "vitest run",
+		"card": "node scripts/gen-agent-card.mjs",
+		"card:check": "node scripts/gen-agent-card.mjs --check"
+	},
+	"dependencies": {
+		"@a2a-js/sdk": "^1.1.0",
+		"@posthog/mcp": "0.11.7",
+		"agents": "^0.17.1",
+		"posthog-node": "5.51.2",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"esbuild": "^0.28.2",
+		"oxfmt": "^0.56.0",
+		"oxlint": "^1.71.0",
+		"typescript": "6.0.3",
+		"vitest": "^3.2.7",
+		"wrangler": "^4.129.0"
+	}
 }
