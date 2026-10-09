@@ -103,8 +103,8 @@ export function buildAgentCard(): AgentCard {
 	return {
 		name: "Engineering Leadership Toolkit",
 		description:
-			"Agent-callable tools from Marian Kamenistak's mentoring practice at marian.coach: developer and engineering-manager salary models, a calibrated team-lead readiness test, 1:1 playbooks, coaching-cost estimates and first-party leadership benchmarks — grounded in 3,611 paid 1:1 mentoring sessions with 300+ engineering leaders since 2019.",
-		version: "1.7.0",
+			"Agent-callable tools from Marian Kamenistak's mentoring practice at marian.coach: developer and engineering-manager salary models, a calibrated team-lead readiness test, 1:1 playbooks, coaching-cost estimates and first-party leadership benchmarks — grounded in 3,662 paid 1:1 mentoring sessions with 300+ engineering leaders since 2019.",
+		version: "1.7.1",
 		iconUrl: `${ORIGIN}/favicon-192x192.webp`,
 		documentationUrl: `${ORIGIN}/ai-coaching-tools/`,
 		provider: {

@@ -179,7 +179,7 @@ function getStartedResult() {
 		(d) => `- "${d.question}" → \`${d.name}\`: ${d.description}`,
 	).join("\n");
 	return text(
-		`This is the Engineering Leadership Toolkit — 9 tools grounded in 3,611 paid 1:1 mentoring sessions with 300+ engineering leaders. Route the user's actual question to one of these:\n\n${menu}\n\nIf none fit, ask the user what they're trying to figure out and pick the closest match.`,
+		`This is the Engineering Leadership Toolkit — 9 tools grounded in 3,662 paid 1:1 mentoring sessions with 300+ engineering leaders. Route the user's actual question to one of these:\n\n${menu}\n\nIf none fit, ask the user what they're trying to figure out and pick the closest match.`,
 		"/mcp",
 	);
 }
@@ -203,7 +203,7 @@ const USAGE_CONFIG: McpUsageConfig = {
 export class EngLeadershipToolkit extends McpAgent<Env, unknown, McpGeo> {
 	server = new McpServer({
 		name: "eng-leadership-toolkit",
-		version: "1.7.0",
+		version: "1.7.1",
 	});
 
 	async init() {

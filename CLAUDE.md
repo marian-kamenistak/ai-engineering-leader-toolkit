@@ -40,4 +40,4 @@ is the JSON surface for the marian.coach pricing wizard.
 - [ ] `/mcp/mentoring` still routes to `mentoring-inquiry-builder`
 
 ## Gotchas
-- Numbers in tool copy (3,400+ sessions, 300+ leaders) must match the data-points registry.
+- Numbers in tool copy (3,662 sessions, 300+ leaders) must match the data-points registry.

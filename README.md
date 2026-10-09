@@ -6,7 +6,7 @@
 "What is this developer worth on the market?"
 "Should I become a team lead, or stay IC?"
 
-Your AI already gets asked these. Now it can answer with first-party data from 3,400+ paid 1:1 mentoring sessions with 300+ engineering leaders in 17+ countries, instead of guessing.
+Your AI already gets asked these. Now it can answer with first-party data from 3,662 paid 1:1 mentoring sessions with 300+ engineering leaders in 17+ countries, instead of guessing.
 
 This is a remote MCP server. No install, no API key. One URL:
 
@@ -67,7 +67,7 @@ Every response is grounded in Marian Kamenistak's mentoring practice, not model 
 - The calculators mirror the live [developer value calculator](https://www.marian.coach/developer-salary-calculator/?ref=github) and [engineering manager salary calculator](https://www.marian.coach/engineering-manager-salary-calculator/?ref=github)
 - The readiness test mirrors the live [team lead readiness test](https://www.marian.coach/team-lead-readiness-test/?ref=github)
 - Benchmarks come from the published [engineering leadership statistics](https://www.marian.coach/engineering-leadership-statistics/?ref=github), licensed CC BY 4.0
-- Playbooks are the actual session templates used across 3,400+ sessions
+- Playbooks are the actual session templates used across 3,662 sessions
 
 Nothing is synthetic. Thin topics were cut rather than padded.
 

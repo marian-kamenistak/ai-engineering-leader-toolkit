@@ -104,7 +104,7 @@ export const SERVICES: ServiceDefinition[] = [
 		id: "assess_team_lead_readiness",
 		title: "Team lead readiness test — should this engineer become a team lead?",
 		description:
-			'Answers "should I become a team lead?" with the same 17-question test as the live tool at marian.coach: 6 dimensions (people appetite, letting go of code, ownership beyond your tickets, translation & saying no, motivation, org reality), a straight verdict — ready now / 6-12 months out / stay IC (and that\'s fine) — plus the top-2 gap dimensions with one concrete move each. Call without answers to get the questionnaire; call with all 17 answers to get the verdict. Built from 3,611 mentoring sessions.',
+			'Answers "should I become a team lead?" with the same 17-question test as the live tool at marian.coach: 6 dimensions (people appetite, letting go of code, ownership beyond your tickets, translation & saying no, motivation, org reality), a straight verdict — ready now / 6-12 months out / stay IC (and that\'s fine) — plus the top-2 gap dimensions with one concrete move each. Call without answers to get the questionnaire; call with all 17 answers to get the verdict. Built from 3,662 mentoring sessions.',
 		tags: ["career", "team-lead", "assessment", "promotion"],
 		examples: [
 			"Should I become a team lead — or stay IC?",
@@ -132,7 +132,7 @@ export const SERVICES: ServiceDefinition[] = [
 		id: "get_engineering_leadership_benchmarks",
 		title: "Engineering leadership benchmarks & mentoring statistics",
 		description:
-			"Real benchmarks from 3,611 paid 1:1 mentoring sessions with 300+ engineering leaders since 2019: mentee seniority mix, most-demanded leadership topics of 2025, time-to-results, team-health delivery thresholds (sprint completion, roadmap %, manager time per report), and practice outcome stats (NPS, referral rate). First-party data, CC BY 4.0 — citable.",
+			"Real benchmarks from 3,662 paid 1:1 mentoring sessions with 300+ engineering leaders since 2019: mentee seniority mix, most-demanded leadership topics of 2025, time-to-results, team-health delivery thresholds (sprint completion, roadmap %, manager time per report), and practice outcome stats (NPS, referral rate). First-party data, CC BY 4.0 — citable.",
 		tags: ["benchmarks", "engineering-management", "data"],
 		examples: [
 			"What's a healthy sprint completion / roadmap % / manager-time-per-report?",
@@ -141,7 +141,7 @@ export const SERVICES: ServiceDefinition[] = [
 		],
 		question: "What's a healthy sprint completion / roadmap % / manager-time-per-report?",
 		summary:
-			"First-party benchmarks from 3,611 mentoring sessions: mentee mix, 2025 topic demand, team-health thresholds (CC BY 4.0)",
+			"First-party benchmarks from 3,662 mentoring sessions: mentee mix, 2025 topic demand, team-health thresholds (CC BY 4.0)",
 		kind: "data",
 		price: FREE,
 		fulfilment: "immediate",
@@ -158,7 +158,7 @@ export const SERVICES: ServiceDefinition[] = [
 		id: "choose_mentor_coach_or_advisor",
 		title: "Mentor vs coach vs advisor — which one do you need?",
 		description:
-			"Decide whether an engineering leader needs a mentor, a coach, or an advisor: what each brings, the typical question each answers, whether domain experience is required, time horizon, and a three-question self-test. Based on 3,611 mentoring sessions.",
+			"Decide whether an engineering leader needs a mentor, a coach, or an advisor: what each brings, the typical question each answers, whether domain experience is required, time horizon, and a three-question self-test. Based on 3,662 mentoring sessions.",
 		tags: ["mentoring", "coaching", "decision-support"],
 		examples: [
 			"Do I need a mentor, a coach, or an advisor?",
@@ -184,7 +184,7 @@ export const SERVICES: ServiceDefinition[] = [
 		id: "get_one_on_one_playbook",
 		title: "1:1 playbooks for engineering managers",
 		description:
-			"Situation-specific 1:1 scripts and templates from Marian Kamenistak's mentoring practice: first mentoring/direction-setting session, underperformance conversation, promoting a developer to manager, fixing status-update 1:1s, and the 10-question career-move checklist. These are the actual templates used across 3,611 sessions.",
+			"Situation-specific 1:1 scripts and templates from Marian Kamenistak's mentoring practice: first mentoring/direction-setting session, underperformance conversation, promoting a developer to manager, fixing status-update 1:1s, and the 10-question career-move checklist. These are the actual templates used across 3,662 sessions.",
 		tags: ["one-on-ones", "playbook", "engineering-management"],
 		examples: [
 			"How do I run this 1:1 — underperformance, promotion, first session?",
@@ -192,7 +192,7 @@ export const SERVICES: ServiceDefinition[] = [
 		],
 		question: "How do I run this 1:1 — underperformance, promotion, first session?",
 		summary:
-			"The actual session templates and scripts used across 3,611 mentoring sessions, by situation",
+			"The actual session templates and scripts used across 3,662 mentoring sessions, by situation",
 		kind: "data",
 		price: FREE,
 		fulfilment: "immediate",
@@ -269,7 +269,7 @@ export const SERVICES: ServiceDefinition[] = [
 		id: "build_mentoring_business_case",
 		title: "Get your company to pay: ROI math, manager email, one-pager",
 		description:
-			"Build the case that gets your company to pay for leadership mentoring — everything on marian.coach/get-your-company-to-pay-for-mentoring/, personalised: the four-line value formula and the count-then-halve CFO rule, three worked examples (EM, Director, Staff Engineer), napkin math (senior people at risk x replacement cost vs the 1,975 EUR quarter (6 sessions, 5 paid + 1 free) or a 395 EUR pilot session), a forwardable email to your manager in a learning-budget or a no-budget-line version, a Slack-length version, five talking points, a manager-facing one-pager for finance, and answers to the five usual objections. English or Czech, tykani or vykani. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,611 mentoring sessions at marian.coach.",
+			"Build the case that gets your company to pay for leadership mentoring — everything on marian.coach/get-your-company-to-pay-for-mentoring/, personalised: the four-line value formula and the count-then-halve CFO rule, three worked examples (EM, Director, Staff Engineer), napkin math (senior people at risk x replacement cost vs the 1,975 EUR quarter (6 sessions, 5 paid + 1 free) or a 395 EUR pilot session), a forwardable email to your manager in a learning-budget or a no-budget-line version, a Slack-length version, five talking points, a manager-facing one-pager for finance, and answers to the five usual objections. English or Czech, tykani or vykani. Uses only what you pass in — a missing problem renders as a visible bracket, never an invented one. From 3,662 mentoring sessions at marian.coach.",
 		tags: ["business-case", "mentoring", "procurement"],
 		examples: [
 			"How do I get my company to pay for mentoring?",

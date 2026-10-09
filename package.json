@@ -1,6 +1,6 @@
 {
 	"name": "ai-engineering-leader-toolkit",
-	"version": "1.7.0",
+	"version": "1.7.1",
 	"private": true,
 	"scripts": {
 		"deploy": "npm run card:check && wrangler deploy",

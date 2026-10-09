@@ -36,7 +36,7 @@ Also corrected: the toolkit has **10** tools, not the 9 this packet claimed in J
 - Server name: `Engineering Leadership Toolkit`
 - Tagline (55 cap, this is 55): `Salary benchmarks and playbooks for engineering leaders`
 - Description (2,000 cap):
-  > Benchmarks and decision tools for engineering leaders, built from 3,611 mentoring sessions with leaders in 17+ countries since 2019, rated 9.17/10 across 300+ reviews. Ten tools: developer and engineering-manager market-value calculators with 2026 European salary data, a calibrated 17-question team-lead readiness assessment, engineering leadership benchmarks, 1:1 playbooks, first-time-manager readiness and failure modes, a mentor-vs-coach-vs-advisor chooser, a coaching cost estimator, and a mentoring business-case builder. Every tool is read-only. No account, no key, no setup. By Marian Kamenistak, engineering leadership mentor (marian.coach).
+  > Benchmarks and decision tools for engineering leaders, built from 3,662 mentoring sessions with leaders in 17+ countries since 2019. Mentees rate every session from 0 to 10 right after it; since 2024 the average is 9.17/10. Ten tools: developer and engineering-manager market-value calculators with 2026 European salary data, a calibrated 17-question team-lead readiness assessment, engineering leadership benchmarks, 1:1 playbooks, first-time-manager readiness and failure modes, a mentor-vs-coach-vs-advisor chooser, a coaching cost estimator, and a mentoring business-case builder. Every tool is read-only. No account, no key, no setup. By Marian Kamenistak, engineering leadership mentor (marian.coach).
 - Documentation URL: `https://www.marian.coach/mcp`
 - Privacy policy: `https://www.marian.coach/privacy-policy/`
 - Support: `marian@marian.coach`

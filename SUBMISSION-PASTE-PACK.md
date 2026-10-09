@@ -38,12 +38,12 @@ https://github.com/marian-kamenistak/eng-leadership-toolkit
 
 **Short description** (under 100 chars)
 ```
-Engineering leadership benchmarks, 1:1 playbooks, developer value calculator. 3,400+ sessions.
+Engineering leadership benchmarks, 1:1 playbooks, developer value calculator. 3,662 sessions.
 ```
 
 **Long description**
 ```
-First-party data from 3,400+ paid 1:1 mentoring sessions with 300+ engineering leaders
+First-party data from 3,662 paid 1:1 mentoring sessions with 300+ engineering leaders
 in 17+ countries. Nine tools covering developer and engineering-manager market value,
 team-lead readiness, leadership benchmarks, 1:1 playbooks, first-time-manager guidance,
 mentor-vs-coach selection, coaching cost estimates, and a forwardable business case for
