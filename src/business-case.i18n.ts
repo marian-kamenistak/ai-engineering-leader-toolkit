@@ -234,9 +234,9 @@ const EN: Strings = {
 		s_what: "What it is",
 		what_body: {
 			ld_budget:
-				"6 one-hour 1:1 sessions over 3 months, plus async access between sessions, with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,662 mentoring sessions with 300 leaders since 2019; mentees rate every session from 0 to 10 right after it, and since 2024 the average is 9.18/10.",
+				"6 one-hour 1:1 sessions over 3 months, plus async access between sessions, with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,662 mentoring sessions with 300 leaders since 2019; mentees rate every session from 0 to 10 right after it, and since 2024 the average is 9.79/10.",
 			no_budget:
-				"Pilot: one 60-minute 1:1 session with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,662 mentoring sessions with 300 leaders since 2019; mentees rate every session from 0 to 10 right after it, and since 2024 the average is 9.18/10. If continued within 30 days, the session counts toward the 6-session quarter.",
+				"Pilot: one 60-minute 1:1 session with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,662 mentoring sessions with 300 leaders since 2019; mentees rate every session from 0 to 10 right after it, and since 2024 the average is 9.79/10. If continued within 30 days, the session counts toward the 6-session quarter.",
 		},
 		s_investment: "Investment",
 		investment_rows: {
@@ -344,7 +344,7 @@ const EN: Strings = {
 			url: "https://journals.aom.org/doi/10.5465/amle.2022.0107",
 		},
 		{
-			claim: "3,662 sessions, 300 leaders since 2019. Mentees rate every session from 0 to 10 right after it; since 2024 the average is 9.18/10.",
+			claim: "3,662 sessions, 300 leaders since 2019. Mentees rate every session from 0 to 10 right after it; since 2024 the average is 9.79/10.",
 			source: "marian.coach",
 			url: "https://www.marian.coach/engineering-leadership-statistics/",
 		},
@@ -548,9 +548,9 @@ const CS: Strings = {
 		s_what: "Co to je",
 		what_body: {
 			ld_budget:
-				"6 hodinových 1:1 sessions během 3 měsíců plus async přístup mezi nimi, s Marianem Kamenistakem (marian.coach). Engineering leader; v Mews rozšířil engineering z 8 na 80 týmů přes Series C; 3 662 mentoringových sessions se 300 leadery od roku 2019; mentees hodnotí každou session hned po ní od 0 do 10, od roku 2024 je průměr 9,18/10.",
+				"6 hodinových 1:1 sessions během 3 měsíců plus async přístup mezi nimi, s Marianem Kamenistakem (marian.coach). Engineering leader; v Mews rozšířil engineering z 8 na 80 týmů přes Series C; 3 662 mentoringových sessions se 300 leadery od roku 2019; mentees hodnotí každou session hned po ní od 0 do 10, od roku 2024 je průměr 9,79/10.",
 			no_budget:
-				"Pilot: jedna 60minutová 1:1 session s Marianem Kamenistakem (marian.coach). Engineering leader; v Mews rozšířil engineering z 8 na 80 týmů přes Series C; 3 662 mentoringových sessions se 300 leadery od roku 2019; mentees hodnotí každou session hned po ní od 0 do 10, od roku 2024 je průměr 9,18/10. Při pokračování do 30 dnů se session započítá do kvartálu o 6 sessions.",
+				"Pilot: jedna 60minutová 1:1 session s Marianem Kamenistakem (marian.coach). Engineering leader; v Mews rozšířil engineering z 8 na 80 týmů přes Series C; 3 662 mentoringových sessions se 300 leadery od roku 2019; mentees hodnotí každou session hned po ní od 0 do 10, od roku 2024 je průměr 9,79/10. Při pokračování do 30 dnů se session započítá do kvartálu o 6 sessions.",
 		},
 		s_investment: "Investice",
 		investment_rows: {
@@ -657,7 +657,7 @@ const CS: Strings = {
 			url: "https://journals.aom.org/doi/10.5465/amle.2022.0107",
 		},
 		{
-			claim: "3 662 sessions, 300 leaderů od roku 2019. Mentees hodnotí každou session hned po ní od 0 do 10; od roku 2024 je průměr 9,18/10.",
+			claim: "3 662 sessions, 300 leaderů od roku 2019. Mentees hodnotí každou session hned po ní od 0 do 10; od roku 2024 je průměr 9,79/10.",
 			source: "marian.coach",
 			url: "https://www.marian.coach/cs/engineering-leadership-statistics/",
 		},
