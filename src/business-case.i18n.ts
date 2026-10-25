@@ -359,7 +359,7 @@ const EN: Strings = {
 	next_steps: [
 		"Send the email first, then ask for 15 minutes",
 		"Bring the one-pager to the conversation, leave it with them to forward",
-		"Book the free intro call once you have a yes: https://www.marian.coach/meet",
+		"Book the free intro call once you have a yes: https://www.marian.coach/meet?src=business-case",
 		"Invoice goes to your company with your PO number",
 	],
 	value_formula: {
@@ -672,7 +672,7 @@ const CS: Strings = {
 	next_steps: [
 		"Nejdřív pošli e-mail, pak si řekni o 15 minut",
 		"Vezmi na schůzku jednostránkový podklad a nech jim ho k přeposlání",
-		"Až máš ano, rezervuj intro call zdarma: https://www.marian.coach/meet",
+		"Až máš ano, rezervuj intro call zdarma: https://www.marian.coach/meet?src=business-case",
 		"Faktura jde na firmu s vaším číslem objednávky",
 	],
 	value_formula: {
