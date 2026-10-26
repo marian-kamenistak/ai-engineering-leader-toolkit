@@ -1,0 +1,17 @@
+name: zz-kit-probe
+on:
+  push:
+    branches: [zz-kit-probe]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -c "import yaml; print('pyyaml', yaml.__version__)"
+      - if: always()
+        uses: marian-kamenistak/ops-automation-kit/actions/report-and-register@v1.0.0
+        with:
+          op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          status: ${{ job.status }}
+          job-id: zz-eng-toolkit-kit-probe
+          register: 'false'
