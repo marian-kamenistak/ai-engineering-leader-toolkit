@@ -3,6 +3,7 @@
 	"version": "1.7.1",
 	"private": true,
 	"scripts": {
+		"predeploy": "bash \"$HOME/ai/_platform/secret-sync/sync-secrets.sh\" --name eng-leadership-toolkit",
 		"deploy": "npm run card:check && wrangler deploy",
 		"dev": "wrangler dev",
 		"format": "oxfmt --write .",
