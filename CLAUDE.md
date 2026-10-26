@@ -41,3 +41,4 @@ is the JSON surface for the marian.coach pricing wizard.
 
 ## Gotchas
 - Numbers in tool copy (3,662 sessions, 300+ leaders) must match the data-points registry.
+- Run reports (automation-visibility R-W, 2026-10-26): the cron posts to control-room through the `CONTROL_ROOM` service binding (secret `CONTROL_ROOM_TOKEN`, `.op-secrets`): failures, plus one success a day (first tick after 00:00 UTC). Test: `wrangler deploy --var REPORT_JOB_ID:zz-<name>` reports every tick; redeploy without it.

@@ -350,6 +350,43 @@ ${skills}
 </ul>`;
 }
 
+/**
+ * Scheduled-run report → control-room (automation-visibility R-W, 2026-10-26), through the
+ * CONTROL_ROOM service binding: a same-account workers.dev fetch 404s. A 15-min probe reports every
+ * failure (the same ticks that post to Slack), plus one success a day: the first tick after
+ * 00:00 UTC. REPORT_JOB_ID is set only by `wrangler deploy --var REPORT_JOB_ID:zz-...` for a test;
+ * a zz- id reports every tick. Never throws.
+ */
+async function reportProbe(env: Env, scheduledTime: number, started: number, total: number, failures: string[]) {
+	const cf = env as unknown as { CONTROL_ROOM?: Fetcher; CONTROL_ROOM_TOKEN?: string; REPORT_JOB_ID?: string };
+	const job = cf.REPORT_JOB_ID || "eng-leadership-toolkit";
+	if (!failures.length && scheduledTime % 86_400_000 >= 15 * 60_000 && !job.startsWith("zz-")) return;
+	if (!cf.CONTROL_ROOM || !cf.CONTROL_ROOM_TOKEN) return;
+	try {
+		const res = await cf.CONTROL_ROOM.fetch("https://control-room/report", {
+			method: "POST",
+			headers: { "content-type": "application/json", "x-report-token": cf.CONTROL_ROOM_TOKEN },
+			body: JSON.stringify({
+				run_id: `${job}:${scheduledTime}`,
+				job_id: job,
+				status: failures.length ? "failed" : "success",
+				runtime: "worker",
+				source: "worker",
+				host: "eng-leadership-toolkit",
+				finished_at: new Date().toISOString(),
+				duration_s: (Date.now() - started) / 1000,
+				exit_code: failures.length ? 1 : 0,
+				kpi: `${total - failures.length}/${total} mentoring MCP uptime checks ok`,
+				kpi_pass: failures.length ? "no" : "yes",
+				detail: failures.length ? failures.join(" · ").slice(0, 1000) : "daily summary: sibling uptime probe every 15 min",
+			}),
+		});
+		if (!res.ok) console.error("run report failed", res.status);
+	} catch (e) {
+		console.error("run report failed", String(e));
+	}
+}
+
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url);
@@ -496,7 +533,8 @@ export default {
 	 * Silent when green; Slack webhook (SLACK_WEBHOOK_URL secret) on failure only.
 	 * Never probe this Worker's own /mcp* from here.
 	 */
-	async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+	async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+		const started = Date.now();
 		const SIBLING = "https://www.marian.coach/mcp/mentoring";
 		const checks: { name: string; run: () => Promise<boolean> }[] = [
 			{
@@ -529,6 +567,7 @@ export default {
 				failures.push(`${c.name} (${String(e).slice(0, 80)})`);
 			}
 		}
+		ctx.waitUntil(reportProbe(env, event.scheduledTime, started, checks.length, failures));
 		if (!failures.length) return;
 
 		console.error("[UPTIME_FAIL]", failures);

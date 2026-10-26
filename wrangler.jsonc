@@ -48,4 +48,6 @@
 	"triggers": {
 		"crons": ["*/15 * * * *"],
 	},
+	// Scheduled-run reports (failures + one daily success) → control-room, secret CONTROL_ROOM_TOKEN.
+	"services": [{ "binding": "CONTROL_ROOM", "service": "control-room" }],
 }
