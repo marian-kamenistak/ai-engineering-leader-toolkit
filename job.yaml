@@ -1,0 +1,37 @@
+# job.yaml (P3-REGISTRY). Format + rules: agentic-os projects/briefs/automation-visibility/phase2/job-yaml-schema.md
+# Check: node ~/ai/_platform/control-room/scripts/registry.ts check <this file>
+schema: 1
+id: eng-leadership-toolkit
+catalogue_id: CF-10 eng-leadership-toolkit
+title: Toolkit MCP uptime probe (every 15 min)
+status: active
+streams: [mc]
+purpose: check
+entity: null
+owner: marian
+sender: none
+runtime:
+  kind: worker
+  repo: marian-kamenistak/ai-engineering-leader-toolkit
+  path: .
+  entry: eng-leadership-toolkit
+schedule:
+- owner: native
+  cron: '*/15 * * * *'
+  tz: UTC
+  grace_min: 720
+kpi:
+  name: probe pass rate (7 d)
+  unit: percent
+  target: 99
+  warn: 97
+  direction: gte
+test:
+  command: npm test
+  dry_run: PLACEHOLDER_DRY_RUN
+autofix:
+  allowed: false
+  max_attempts: 0
+manual_minutes_per_run: 0
+manual_minutes_source: estimate
+docs: CLAUDE.md
