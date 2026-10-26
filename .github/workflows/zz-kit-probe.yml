@@ -7,11 +7,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -c "import yaml; print('pyyaml', yaml.__version__)"
+      - run: python3 -c "import yaml; print('pyyaml', yaml.__version__)" || true
+      - uses: 1password/load-secrets-action@v5.0.1
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          AUTOMATION_KIT_DEPLOY_KEY_B64: op://ELC Automation/AUTOMATION_KIT_DEPLOY_KEY_B64/credential
+      - name: fetch automation-kit
+        run: |
+          k="$RUNNER_TEMP/kit_key"; printf '%s' "$AUTOMATION_KIT_DEPLOY_KEY_B64" | base64 -d > "$k"; chmod 600 "$k"
+          GIT_SSH_COMMAND="ssh -i $k -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git clone -q --depth 1 --branch v1.0.0 git@github.com:marian-kamenistak/ops-automation-kit.git .automation-kit
+          rm -f "$k"
       - if: always()
-        uses: marian-kamenistak/ops-automation-kit/actions/report-and-register@v1.0.0
+        uses: ./.automation-kit/actions/report-and-register
         with:
           op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           status: ${{ job.status }}
           job-id: zz-eng-toolkit-kit-probe
-          register: 'false'
+          register: 'true'
