@@ -37,13 +37,13 @@ jobs:
       # 1Password → Worker secrets (.op-secrets) → npm ci → gates → wrangler deploy.
       # worker-configuration.d.ts (Cloudflare Workers ambient runtime types) is gitignored
       # and only exists on Marian's Mac because `wrangler types` was already run there, so
-      # cf-typegen runs before type-check. card:check is the same gate `npm run deploy` runs.
+      # cf-typegen runs before type-check. card:check stays laptop-only (it reads the sibling mc-web checkout).
       - name: Test, type-check and deploy
         uses: ./.automation-kit/actions/deploy-worker
         with:
           op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           checkout: 'false'
-          pre-deploy: npm test && npm run cf-typegen && npm run type-check && npm run card:check
+          pre-deploy: npm test && npm run cf-typegen && npm run type-check
 
       - name: Smoke check — tools/list
         run: |
