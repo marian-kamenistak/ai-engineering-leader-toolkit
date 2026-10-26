@@ -31,7 +31,7 @@ jobs:
         run: |
           k="$RUNNER_TEMP/kit_key"; printf '%s' "$AUTOMATION_KIT_DEPLOY_KEY_B64" | base64 -d > "$k"; chmod 600 "$k"
           GIT_SSH_COMMAND="ssh -i $k -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
-            git clone -q --depth 1 --branch v1.0.2 git@github.com:marian-kamenistak/ops-automation-kit.git .automation-kit
+            git clone -q --depth 1 --branch v1.0.3 git@github.com:marian-kamenistak/ops-automation-kit.git .automation-kit
           rm -f "$k"
 
       # 1Password → Worker secrets (.op-secrets) → npm ci → gates → wrangler deploy.
