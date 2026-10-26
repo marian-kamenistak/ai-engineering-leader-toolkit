@@ -50,4 +50,6 @@
 	},
 	// Scheduled-run reports (failures + one daily success) → control-room, secret CONTROL_ROOM_TOKEN.
 	"services": [{ "binding": "CONTROL_ROOM", "service": "control-room" }],
+	// Uncaught exceptions + console.error → error-tail (automation-visibility #3).
+	"tail_consumers": [{ "service": "error-tail" }],
 }

@@ -35,6 +35,7 @@ import {
 } from "@a2a-js/sdk/server";
 import { A2A_PATH, EngLeadershipToolkitExecutor, ORIGIN, buildAgentCard } from "./a2a";
 import { getMoreToolsResult } from "@posthog/mcp";
+import { report } from "automation-kit/report";
 
 // Every tool is a read-only lookup or calculation over first-party mentoring data:
 // nothing mutates, nothing calls out to a third party, and the same input always
@@ -362,29 +363,23 @@ async function reportProbe(env: Env, scheduledTime: number, started: number, tot
 	const job = cf.REPORT_JOB_ID || "eng-leadership-toolkit";
 	if (!failures.length && scheduledTime % 86_400_000 >= 15 * 60_000 && !job.startsWith("zz-")) return;
 	if (!cf.CONTROL_ROOM || !cf.CONTROL_ROOM_TOKEN) return;
-	try {
-		const res = await cf.CONTROL_ROOM.fetch("https://control-room/report", {
-			method: "POST",
-			headers: { "content-type": "application/json", "x-report-token": cf.CONTROL_ROOM_TOKEN },
-			body: JSON.stringify({
-				run_id: `${job}:${scheduledTime}`,
-				job_id: job,
-				status: failures.length ? "failed" : "success",
-				runtime: "worker",
-				source: "worker",
-				host: "eng-leadership-toolkit",
-				finished_at: new Date().toISOString(),
-				duration_s: (Date.now() - started) / 1000,
-				exit_code: failures.length ? 1 : 0,
-				kpi: `${total - failures.length}/${total} mentoring MCP uptime checks ok`,
-				kpi_pass: failures.length ? "no" : "yes",
-				detail: failures.length ? failures.join(" · ").slice(0, 1000) : "daily summary: sibling uptime probe every 15 min",
-			}),
-		});
-		if (!res.ok) console.error("run report failed", res.status);
-	} catch (e) {
-		console.error("run report failed", String(e));
-	}
+	const r = await report(
+		{
+			run_id: `${job}:${scheduledTime}`,
+			job_id: job,
+			status: failures.length ? "failed" : "success",
+			runtime: "worker",
+			source: "worker",
+			host: "eng-leadership-toolkit",
+			duration_s: (Date.now() - started) / 1000,
+			exit_code: failures.length ? 1 : 0,
+			kpi: `${total - failures.length}/${total} mentoring MCP uptime checks ok`,
+			kpi_pass: failures.length ? "no" : "yes",
+			detail: failures.length ? failures.join(" · ").slice(0, 1000) : "daily summary: sibling uptime probe every 15 min",
+		},
+		{ binding: cf.CONTROL_ROOM, token: cf.CONTROL_ROOM_TOKEN },
+	);
+	if (!r.ok) console.error("run report failed", r.error);
 }
 
 export default {

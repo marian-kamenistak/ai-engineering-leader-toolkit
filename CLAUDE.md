@@ -22,6 +22,7 @@ is the JSON surface for the marian.coach pricing wizard.
 # test:   npm test                    # vitest (test/business-case.test.ts)
 # deploy: set -a && source ~/.env && set +a && npm run deploy
 ```
+CI deploys on every push to `main` (`.github/workflows/deploy.yml`, ops-automation-kit `deploy-worker` + `report-and-register`, which also registers `job.yaml`); local `npm run deploy` still works. Errors go to `error-tail` (`tail_consumers`).
 
 ## Sources of truth
 | Data | Lives in | Id / path |
