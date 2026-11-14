@@ -50,6 +50,8 @@
 	},
 	// Scheduled-run reports (failures + one daily success) → control-room, secret CONTROL_ROOM_TOKEN.
 	"services": [{ "binding": "CONTROL_ROOM", "service": "control-room" }],
+	// The deploy id of this version, sent as `version` in every run report (control-room job page "Changes").
+	"version_metadata": { "binding": "CF_VERSION_METADATA" },
 	// Uncaught exceptions + console.error → error-tail (automation-visibility #3).
 	"tail_consumers": [{ "service": "error-tail" }],
 }

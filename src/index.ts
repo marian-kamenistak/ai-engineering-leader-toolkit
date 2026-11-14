@@ -35,7 +35,8 @@ import {
 } from "@a2a-js/sdk/server";
 import { A2A_PATH, EngLeadershipToolkitExecutor, ORIGIN, buildAgentCard } from "./a2a";
 import { getMoreToolsResult } from "@posthog/mcp";
-import { report } from "automation-kit/report";
+import { uptimeTick, type UptimeCheck } from "./uptime";
+import type { RunEnv } from "./run-report";
 
 // Every tool is a read-only lookup or calculation over first-party mentoring data:
 // nothing mutates, nothing calls out to a third party, and the same input always
@@ -351,37 +352,6 @@ ${skills}
 </ul>`;
 }
 
-/**
- * Scheduled-run report → control-room (automation-visibility R-W, 2026-10-26), through the
- * CONTROL_ROOM service binding: a same-account workers.dev fetch 404s. A 15-min probe reports every
- * failure (the same ticks that post to Slack), plus one success a day: the first tick after
- * 00:00 UTC. REPORT_JOB_ID is set only by `wrangler deploy --var REPORT_JOB_ID:zz-...` for a test;
- * a zz- id reports every tick. Never throws.
- */
-async function reportProbe(env: Env, scheduledTime: number, started: number, total: number, failures: string[]) {
-	const cf = env as unknown as { CONTROL_ROOM?: Fetcher; CONTROL_ROOM_TOKEN?: string; REPORT_JOB_ID?: string };
-	const job = cf.REPORT_JOB_ID || "eng-leadership-toolkit";
-	if (!failures.length && scheduledTime % 86_400_000 >= 15 * 60_000 && !job.startsWith("zz-")) return;
-	if (!cf.CONTROL_ROOM || !cf.CONTROL_ROOM_TOKEN) return;
-	const r = await report(
-		{
-			run_id: `${job}:${scheduledTime}`,
-			job_id: job,
-			status: failures.length ? "failed" : "success",
-			runtime: "worker",
-			source: "worker",
-			host: "eng-leadership-toolkit",
-			duration_s: (Date.now() - started) / 1000,
-			exit_code: failures.length ? 1 : 0,
-			kpi: `${total - failures.length}/${total} mentoring MCP uptime checks ok`,
-			kpi_pass: failures.length ? "no" : "yes",
-			detail: failures.length ? failures.join(" · ").slice(0, 1000) : "daily summary: sibling uptime probe every 15 min",
-		},
-		{ binding: cf.CONTROL_ROOM, token: cf.CONTROL_ROOM_TOKEN },
-	);
-	if (!r.ok) console.error("run report failed", r.error);
-}
-
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url);
@@ -525,13 +495,13 @@ export default {
 	 * (marian.coach/mcp/mentoring), every 15 min. Why here: a Worker cannot fetch a URL its
 	 * own routes match (Cloudflare's self-recursion guard fails the subrequest), so each MCP
 	 * Worker probes the other one. The mentoring Worker probes this /mcp docs page back.
-	 * Silent when green; Slack webhook (SLACK_WEBHOOK_URL secret) on failure only.
+	 * Silent when green. A failure is a failed run in control-room (paged once per incident); the Slack webhook
+	 * (SLACK_WEBHOOK_URL secret) only fires when control-room could not take the report. Logic: src/uptime.ts.
 	 * Never probe this Worker's own /mcp* from here.
 	 */
 	async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-		const started = Date.now();
 		const SIBLING = "https://www.marian.coach/mcp/mentoring";
-		const checks: { name: string; run: () => Promise<boolean> }[] = [
+		const checks: UptimeCheck[] = [
 			{
 				name: "mentoring docs GET (wildcard Accept)",
 				run: async () => (await fetch(SIBLING, { headers: { accept: "*/*" } })).status === 200,
@@ -554,28 +524,20 @@ export default {
 			},
 		];
 
-		const failures: string[] = [];
-		for (const c of checks) {
-			try {
-				if (!(await c.run())) failures.push(c.name);
-			} catch (e) {
-				failures.push(`${c.name} (${String(e).slice(0, 80)})`);
+		// Pause flag, retry and the control-room run report live in src/uptime.ts (tested there). control-room pages a failed run
+		// once per incident; the webhook is the fallback for a report control-room could not take.
+		await uptimeTick(env as unknown as RunEnv, event.scheduledTime, ctx, checks, async (failures) => {
+			const cf = env as unknown as { SLACK_WEBHOOK_URL?: string };
+			if (cf.SLACK_WEBHOOK_URL) {
+				await fetch(cf.SLACK_WEBHOOK_URL, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						text: `:rotating_light: Mentoring MCP uptime probe failing (probed from the toolkit Worker, control-room unreachable): ${failures.join(" · ")} — registries health-check these URLs, fix before listings derank.`,
+						unfurl_links: false,
+					}),
+				}).catch((e) => console.error("uptime slack post failed", String(e)));
 			}
-		}
-		ctx.waitUntil(reportProbe(env, event.scheduledTime, started, checks.length, failures));
-		if (!failures.length) return;
-
-		console.error("[UPTIME_FAIL]", failures);
-		const cf = env as unknown as { SLACK_WEBHOOK_URL?: string };
-		if (cf.SLACK_WEBHOOK_URL) {
-			await fetch(cf.SLACK_WEBHOOK_URL, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					text: `:rotating_light: Mentoring MCP uptime probe failing (probed from the toolkit Worker): ${failures.join(" · ")} — registries health-check these URLs, fix before listings derank.`,
-					unfurl_links: false,
-				}),
-			}).catch((e) => console.error("uptime slack post failed", String(e)));
-		}
+		});
 	},
 };

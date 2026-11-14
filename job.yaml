@@ -35,3 +35,17 @@ autofix:
 manual_minutes_per_run: 0
 manual_minutes_source: estimate
 docs: CLAUDE.md
+# operating standard (playbook section 14), 2026-11-14
+triage: approval
+depends_on: []
+runbook:
+- Open the job page: a failed run names the check that failed (mentoring docs GET or MCP initialize POST on marian.coach/mcp/mentoring).
+- Each check is retried once; a failed run is paged once by control-room (#warning-bot) and sits in the fix queue.
+- Check the marian.coach/mcp/mentoring route and the mentoring-inquiry-builder Worker first: this probe watches the sibling, not itself.
+- Pause the probe from its control-room page during a planned deploy; it reports paused, not failed.
+- The code is src/index.ts and src/uptime.ts; the Worker deploys from GitHub Actions on push to main.
+inputs:
+- name: mentoring-inquiry-builder public endpoint (marian.coach/mcp/mentoring)
+  max_age: 15m
+  source: live HTTPS probe, nothing stored
+budget: null # n.a.: no LLM, credits or paid API
