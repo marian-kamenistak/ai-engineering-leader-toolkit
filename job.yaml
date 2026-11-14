@@ -28,7 +28,7 @@ kpi:
   direction: gte
 test:
   command: npm test
-  dry_run: PLACEHOLDER_DRY_RUN
+  dry_run: npx wrangler deploy --dry-run --outdir "$(mktemp -d)"
 autofix:
   allowed: false
   max_attempts: 0
