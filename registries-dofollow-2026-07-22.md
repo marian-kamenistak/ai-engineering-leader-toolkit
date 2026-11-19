@@ -73,4 +73,4 @@ Revisit only if, after the Tier 1 wave lands, the referring-domain count still n
 7. mcpserverfinder.com — check auto-pickup of the repo; submit if absent (5 min).
 8. claude.com Connectors — prep the review packet (docs URL, privacy policy, icon, test instructions) — the one that needs real prep; highest domain of the attainable set.
 9. hub.docker.com — single PR attempt to docker/mcp-registry (remote-server type), timebox 30 min.
-10. Log each landed link in `_4MC/backlink-targets-2026.md` § Progress log as T8/#53.
+10. Log each landed link in `~/ai/business/mc/backlinks/backlink-targets-2026.md` § Progress log as T8/#53.
