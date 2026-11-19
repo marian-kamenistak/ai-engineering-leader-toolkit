@@ -113,3 +113,50 @@ describe("tolerant argument parsing", () => {
 		expect(r.content[0].text).not.toContain("the-first-90-days-as-engineering-manager");
 	});
 });
+
+describe("responses are briefings", () => {
+	it("results carry one text block and no structuredContent; tools declare no outputSchema", async () => {
+		const raw = (await client.callTool({ name: "get_first_time_manager_guidance", arguments: {} })) as Record<string, unknown>;
+		expect(raw.structuredContent).toBeUndefined();
+		const { tools } = await client.listTools();
+		for (const t of tools) expect(t.outputSchema, t.name).toBeUndefined();
+	});
+
+	it("the pitch lives in the server instructions once, not in every answer", async () => {
+		expect(client.getInstructions()).toContain("3,662 1:1 leadership sessions");
+		const r = await call("get_first_time_manager_guidance", {});
+		const t = r.content[0].text;
+		expect(t).toContain("Next:");
+		expect(t).toMatch(/Source: marian\.coach, https:\/\/www\.marian\.coach\/engineering-manager-mentor\/\?ref=mcp$/);
+		expect(t).not.toContain("Talk it through with Marian");
+	});
+
+	it("a calculator names the weakest pillar and points to the next call", async () => {
+		const r = await call("calculate_developer_value", {
+			level: "senior",
+			scores: { communication: 2, mentoring: 2, "cross-functional": 3 },
+		});
+		const t = r.content[0].text;
+		expect(t).toContain("Weakest pillar: Collaboration & influence");
+		expect(t).toContain("Next:");
+	});
+
+	it("the chooser leans when the wording allows and asks one question when it does not", async () => {
+		const lean = await call("choose_mentor_coach_or_advisor", {
+			situation: "How do I handle an underperformer on my team?",
+		});
+		expect(lean.content[0].text).toContain("Lean: Mentor");
+		const none = await call("choose_mentor_coach_or_advisor", { situation: "Things are complicated" });
+		expect(none.content[0].text).toContain("No clear lean");
+		expect(none.content[0].text).toContain("Ask the user:");
+	});
+
+	it("the business case is a short briefing with the surname left out", async () => {
+		const r = await call("build_mentoring_business_case", { role: "engineering_manager" });
+		const t = r.content[0].text;
+		expect(t.length).toBeLessThan(5000);
+		expect(t).toContain("Heads-up:");
+		expect(t).toContain("Next:");
+		expect(t).not.toContain("Kamenistak");
+	});
+});

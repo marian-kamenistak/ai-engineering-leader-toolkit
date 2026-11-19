@@ -7,15 +7,18 @@
 
 export const SITE = "https://www.marian.coach";
 
-export const ATTRIBUTION = (path: string) =>
-	`\n\n—\nSource: Marian Kamenistak, marian.coach. 3,662 paid 1:1 mentoring sessions with 300+ engineering leaders since 2019.\n${SITE}${path}?ref=mcp\nYour situation is messier than any tool. Talk it through with Marian, 30 min, free: ${SITE}/meet?ref=mcp`;
+// One line on every response. The pitch, the free-intro offer and the guardrails live in the
+// server `instructions` (src/index.ts), once, instead of being appended to every answer.
+export const ATTRIBUTION = (path: string) => `\n\nSource: marian.coach, ${SITE}${path}?ref=mcp`;
 
 export const BENCHMARKS = {
 	practice: [
-		"3,662 paid 1:1 mentoring sessions since 2019",
-		"300+ engineering leaders mentored, leading teams in 17+ countries",
+		// Figures from the ELC data-points registry (read 2026-11-19): mentoring.sessions_delivered,
+		// mentoring.mentees_upskilled, mentoring.avg_session_rating, elc_community.members.
+		"3,662 1:1 leadership sessions since 2019",
+		"317 engineering leaders mentored, leading teams in 17+ countries",
 		"74% of clients come from referrals",
-		"9.2/10 NPS across the mentoring practice; 4.9/5 average rating across 300 reviews",
+		"9.2/10 NPS across the mentoring practice; 9.79/10 average session rating (mentees rate every session right after it)",
 	],
 	menteeSeniorityMix: {
 		headline: "52% of mentees are in their first leadership role when they start.",
@@ -63,7 +66,7 @@ export const BENCHMARKS = {
 	],
 	timeToResults:
 		"Most mentees hit their first big milestone in 4 to 6 sessions — at the usual cadence, 2 to 3 months.",
-	scene: "Engineering Leaders Community (founded 2019): 2,000+ members, 12 meetups a year with 120+ leaders in the room, annual conference with 500+ attendees and speakers from Netflix and Stripe.",
+	scene: "Engineering Leaders Community (founded 2019): 3,700+ members, 12 meetups a year with 120+ leaders in the room, annual conference with 500+ attendees and speakers from Netflix and Stripe.",
 	background:
 		"24 years in software; engineering org at Mews built through Series C from 8 to 80 teams; leadership at Manta before the IBM acquisition; 35+ fractional CTO projects; advised companies with a combined portfolio of $7.1bn.",
 	citation:

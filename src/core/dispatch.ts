@@ -15,14 +15,14 @@
  * different contracts. See the comment on the parse in dispatch() for why that matters.
  */
 
-import { assess, LEVEL_BASELINE, PILLARS } from "../calculator";
-import { BENCHMARKS, MENTOR_VS_COACH } from "../content";
+import { assess, estimateSalary, LEVEL_BASELINE, PILLAR_WEIGHTS, PILLARS } from "../calculator";
 import {
 	assessEm,
 	EM_LEVEL_BASELINE,
 	EM_PILLAR_WEIGHTS,
 	EM_PILLARS,
 	EM_TRACK_LABELS,
+	estimateEmSalary,
 	type EmLevel,
 } from "../em-calculator";
 import {
@@ -35,10 +35,19 @@ import {
 	tlrTopGaps,
 	tlrVerdict,
 } from "../team-lead-readiness";
-import { EM_READINESS, PLAYBOOKS, TEAM_HEALTH_THRESHOLDS } from "../mentoring";
+import { TEAM_HEALTH_THRESHOLDS, type PlaybookSituation } from "../mentoring";
 import { estimateCoachingCost } from "../coaching-cost";
-import { buildBusinessCase, renderReport, type BusinessCaseInput } from "../business-case";
+import { buildBusinessCase, renderBriefing, type BusinessCaseInput } from "../business-case";
 import { z } from "zod";
+import {
+	coachingCostNext,
+	renderBenchmarks,
+	renderChooser,
+	renderFirstTimeManager,
+	renderPlaybook,
+	renderValueBriefing,
+	type BenchmarkTopic,
+} from "./briefings";
 import { ALL_EM_SKILLS, ALL_SKILLS, SERVICES } from "./services";
 import type { ServiceDefinition, ServiceResult } from "./types";
 
@@ -76,6 +85,20 @@ export class InvalidArgumentsError extends Error {
 	}
 }
 
+// What each entered level should land on; a different result label is flagged in the briefing.
+const DEV_LEVEL_LABEL = {
+	junior: "Junior Developer",
+	mid: "Mid-Level Developer",
+	senior: "Senior Developer",
+	staff: "Staff Developer",
+} as const;
+const EM_LEVEL_LABEL: Record<EmLevel, string> = {
+	"team-lead": "Team Lead",
+	em: "Engineering Manager",
+	"senior-em": "Senior EM / Group Lead",
+	director: "Director / VP of Engineering",
+};
+
 type Handler = (args: Record<string, unknown>) => ServiceResult | Promise<ServiceResult>;
 
 const HANDLERS: Record<string, Handler> = {
@@ -97,26 +120,20 @@ const HANDLERS: Record<string, Handler> = {
 			};
 		}
 		const result = assess(level, scores ?? {});
-		const pillarLines = PILLARS.map(
-			(p) => `- ${p.label}: ${result.pillarScores[p.cat]}/10`,
-		).join("\n");
-		const scoredCount = scores
-			? Object.keys(scores).filter((k) => (ALL_SKILLS as readonly string[]).includes(k)).length
-			: 0;
-		const note =
-			scoredCount < ALL_SKILLS.length
-				? `\n\nNote: ${ALL_SKILLS.length - scoredCount} of 15 skills were not scored and used the ${level} baseline of ${LEVEL_BASELINE[level]}/10 — the estimate sharpens with real scores per skill.`
-				: "";
 		return {
-			report: `Developer value assessment (level entered: ${level})
-
-Total score: ${result.totalScore}/10 → ${result.levelLabel}
-Estimated 2026 gross salary, Western Europe (Germany/Netherlands hubs): €${result.salaryEur.toLocaleString("en-US")}/year
-
-Pillar scores:
-${pillarLines}${note}
-
-For the interactive version with per-skill descriptions and a PDF report, use the live calculator.`,
+			report: renderValueBriefing({
+				tool: "calculate_developer_value",
+				levelEntered: level,
+				expectedLabel: DEV_LEVEL_LABEL[level],
+				result,
+				pillars: PILLARS,
+				weights: PILLAR_WEIGHTS[level],
+				scores,
+				baseline: LEVEL_BASELINE[level],
+				salaryFor: estimateSalary,
+				nextWhenComplete:
+					"ask the user what they want to change. If they are weighing a move into management, call assess_team_lead_readiness (no arguments returns the 17 questions); if they already lead people, call calculate_engineering_manager_value with their level.",
+			}),
 			data: {
 				totalScore: result.totalScore,
 				level: result.levelLabel,
@@ -140,30 +157,24 @@ For the interactive version with per-skill descriptions and a PDF report, use th
 			};
 		}
 		const result = assessEm(level, scores ?? {});
-		const w = EM_PILLAR_WEIGHTS[level as EmLevel];
-		const pillarLines = EM_PILLARS.map(
-			(p) => `- ${p.label}: ${result.pillarScores[p.cat]}/10 (weight ${w[p.cat]}% at this level)`,
-		).join("\n");
-		const scoredCount = scores
-			? Object.keys(scores).filter((k) => (ALL_EM_SKILLS as readonly string[]).includes(k)).length
-			: 0;
-		const note =
-			scoredCount < ALL_EM_SKILLS.length
-				? `\n\nNote: ${ALL_EM_SKILLS.length - scoredCount} of 15 skills were not scored and used the ${level} baseline of ${EM_LEVEL_BASELINE[level as EmLevel]}/10 — the estimate sharpens with real scores per skill.`
-				: "";
 		const trackLine = track
-			? `\nTrack: ${EM_TRACK_LABELS[track as keyof typeof EM_TRACK_LABELS]} (context only — the weighting is per level)`
+			? ` Track: ${EM_TRACK_LABELS[track as keyof typeof EM_TRACK_LABELS]} (context only, the weighting is per level).`
 			: "";
 		return {
-			report: `Engineering manager value assessment (level entered: ${level})${trackLine}
-
-Total score: ${result.totalScore}/10 → ${result.levelLabel}
-Estimated 2026 gross salary, Western Europe (Germany/Netherlands hubs): €${result.salaryEur.toLocaleString("en-US")}/year
-
-Pillar scores:
-${pillarLines}${note}
-
-For the interactive version with track-specific level descriptions and a PDF report, use the live calculator.`,
+			report: renderValueBriefing({
+				tool: "calculate_engineering_manager_value",
+				levelEntered: level,
+				expectedLabel: EM_LEVEL_LABEL[level],
+				extraLine: trackLine,
+				result,
+				pillars: EM_PILLARS,
+				weights: EM_PILLAR_WEIGHTS[level],
+				scores,
+				baseline: EM_LEVEL_BASELINE[level],
+				salaryFor: estimateEmSalary,
+				nextWhenComplete:
+					'ask the user which pillar they want to build first. To check the team side, call get_engineering_leadership_benchmarks with topic = "team-health-thresholds"; build_mentoring_business_case makes the case for a mentoring budget.',
+			}),
 			data: {
 				totalScore: result.totalScore,
 				level: result.levelLabel,
@@ -212,79 +223,28 @@ Interactive version with PDF report: https://www.marian.coach/team-lead-readines
 		};
 	},
 
-	get_engineering_leadership_benchmarks: (a) => {
-		const topic = a.topic as string | undefined;
-		const t = topic ?? "all";
-		const sections: string[] = [];
-		if (t === "practice-stats" || t === "all") {
-			sections.push(
-				`Practice stats:\n${BENCHMARKS.practice.map((s) => `- ${s}`).join("\n")}\n- ${BENCHMARKS.timeToResults}\n\nBackground: ${BENCHMARKS.background}\n\nCommunity: ${BENCHMARKS.scene}`,
-			);
-		}
-		if (t === "mentee-mix" || t === "all") {
-			sections.push(
-				`Mentee seniority mix — ${BENCHMARKS.menteeSeniorityMix.headline}\n${BENCHMARKS.menteeSeniorityMix.mix.map((s) => `- ${s}`).join("\n")}`,
-			);
-		}
-		if (t === "topic-demand" || t === "all") {
-			sections.push(
-				`Most-demanded mentoring topics, 2025:\n${BENCHMARKS.topicDemand2025
-					.map((b) => `${b.bucket}\n${b.top3.map((q) => `  - ${q}`).join("\n")}`)
-					.join("\n")}`,
-			);
-		}
-		if (t === "team-health-thresholds" || t === "all") {
-			sections.push(
-				`Team-health thresholds (from Marian's talks and published articles):\n${TEAM_HEALTH_THRESHOLDS.map((s) => `- ${s}`).join("\n")}`,
-			);
-		}
-		sections.push(`How to cite: ${BENCHMARKS.citation}`);
-		return { report: sections.join("\n\n") };
-	},
-
-	choose_mentor_coach_or_advisor: (a) => {
-		const situation = a.situation as string | undefined;
-		const table = MENTOR_VS_COACH.roles
-			.map(
-				(r) =>
-					`${r.role}\n- Brings: ${r.brings}\n- Typical question: "${r.typicalQuestion}"\n- Domain experience: ${r.domainExperience}\n- Time horizon: ${r.timeHorizon}`,
-			)
-			.join("\n\n");
-		const intro = situation
-			? `Situation given: "${situation}" — apply the three-question test below to it.\n\n`
-			: "";
-		return {
-			report: `${intro}${table}\n\nThe three-question test:\n${MENTOR_VS_COACH.threeQuestionTest.join("\n")}\n\nContext: ${MENTOR_VS_COACH.context}`,
-		};
-	},
-
-	get_one_on_one_playbook: (a) => {
-		const situation = a.situation as keyof typeof PLAYBOOKS;
-		const p = PLAYBOOKS[situation];
-		return { report: `${p.title}\n\n${p.body}` };
-	},
-
-	get_first_time_manager_guidance: () => ({
-		report: `The EM responsibility triangle:\n${EM_READINESS.triangle}
-
-Most common first-time-manager failure modes:
-${EM_READINESS.failureModes.map((f) => `- ${f}`).join("\n")}
-
-Readiness self-check before taking the role:
-${EM_READINESS.readinessQuestions.map((q) => `- ${q}`).join("\n")}
-
-The first months:
-${EM_READINESS.firstMonths}`,
+	get_engineering_leadership_benchmarks: (a) => ({
+		report: renderBenchmarks((a.topic as BenchmarkTopic | undefined) ?? "all", TEAM_HEALTH_THRESHOLDS),
 	}),
 
+	choose_mentor_coach_or_advisor: (a) => ({
+		report: renderChooser(a.situation as string | undefined),
+	}),
+
+	get_one_on_one_playbook: (a) => ({
+		report: renderPlaybook(a.situation as PlaybookSituation),
+	}),
+
+	get_first_time_manager_guidance: () => ({ report: renderFirstTimeManager() }),
+
 	estimate_coaching_cost: (a) => ({
-		report: estimateCoachingCost(a as Parameters<typeof estimateCoachingCost>[0]),
+		report: `${estimateCoachingCost(a as Parameters<typeof estimateCoachingCost>[0])}\n\nNext: ${coachingCostNext()}`,
 	}),
 
 	build_mentoring_business_case: (a) => {
 		const bc = buildBusinessCase(a as unknown as BusinessCaseInput);
 		return {
-			report: renderReport(bc),
+			report: renderBriefing(bc, a as unknown as BusinessCaseInput),
 			data: {
 				email: bc.email,
 				slackShort: bc.slack_short,

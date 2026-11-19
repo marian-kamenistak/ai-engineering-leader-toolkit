@@ -234,9 +234,9 @@ const EN: Strings = {
 		s_what: "What it is",
 		what_body: {
 			ld_budget:
-				"6 one-hour 1:1 sessions over 3 months, plus async access between sessions, with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,662 mentoring sessions with 300 leaders since 2019; mentees rate every session from 0 to 10 right after it, and since 2024 the average is 9.79/10.",
+				"6 one-hour 1:1 sessions over 3 months, plus async access between sessions, with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,662 1:1 leadership sessions with 300 leaders since 2019; mentees rate every session from 0 to 10 right after it, and since 2024 the average is 9.79/10.",
 			no_budget:
-				"Pilot: one 60-minute 1:1 session with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,662 mentoring sessions with 300 leaders since 2019; mentees rate every session from 0 to 10 right after it, and since 2024 the average is 9.79/10. If continued within 30 days, the session counts toward the 6-session quarter.",
+				"Pilot: one 60-minute 1:1 session with Marian Kamenistak (marian.coach). Engineering leader; scaled engineering at Mews from 8 to 80 teams through Series C; 3,662 1:1 leadership sessions with 300 leaders since 2019; mentees rate every session from 0 to 10 right after it, and since 2024 the average is 9.79/10. If continued within 30 days, the session counts toward the 6-session quarter.",
 		},
 		s_investment: "Investment",
 		investment_rows: {

@@ -6,7 +6,7 @@
 "What is this developer worth on the market?"
 "Should I become a team lead, or stay IC?"
 
-Your AI already gets asked these. Now it can answer with first-party data from 3,662 paid 1:1 mentoring sessions with 300+ engineering leaders in 17+ countries, instead of guessing.
+Your AI already gets asked these. Now it can answer with first-party data from 3,662 1:1 leadership sessions with 317 engineering leaders in 17+ countries, instead of guessing.
 
 This is a remote MCP server. No install, no API key. One URL:
 

@@ -482,6 +482,89 @@ export function renderReport(bc: BusinessCase): string {
 	].join("\n");
 }
 
+// ─── Briefing (what the MCP tool returns) ─────────────────────────────────
+
+const WORKED_EXAMPLE_FOR_ROLE: Record<BusinessCaseRole, number> = {
+	engineering_manager: 0,
+	director: 1,
+	vp_engineering: 1,
+	staff_engineer: 2,
+	product_manager: 0,
+};
+
+const firstSentence = (s: string): string => s.split(/(?<=[.!?])\s/)[0] ?? s;
+
+/**
+ * The MCP text for build_mentoring_business_case: the same BusinessCase the wizard and the
+ * /mcp/business-case route get, rendered as a briefing instead of the full page. The deliverables
+ * the user forwards (email, Slack line) stay whole; the finance one-pager, the five talking
+ * points and the source list live on the pricing-page wizard and in the JSON route. The worked
+ * example is the one that matches the caller's role, the objections are cut to their first line.
+ * Scaffolding is English (it is read by the agent); the email and Slack text follow `lang`.
+ */
+export function renderBriefing(bc: BusinessCase, input: BusinessCaseInput): string {
+	const noBudget = bc.meta.situation === "no_budget";
+	const roleLabel = STRINGS.en.roles[bc.meta.role];
+	const n = (v: number) => v.toLocaleString("en-US");
+	const ask = noBudget
+		? `one pilot session, ${n(SESSION_PRICE_EUR)} EUR`
+		: `the ${PACK_SESSIONS}-session quarter (${PACK_PAID_SESSIONS} paid + ${PACK_FREE_SESSIONS} free), ${n(PACK_PRICE_EUR)} EUR`;
+	const verdict =
+		bc.math.roi_multiple !== null
+			? `Business case (role: ${roleLabel}): ask for ${ask}. Counted value halved is ${n(bc.math.discounted_eur)} EUR, ${bc.math.roi_multiple}x the ${n(PACK_PRICE_EUR)} EUR quarter.`
+			: `Business case (role: ${roleLabel}): ask for ${ask}. No money total yet.`;
+
+	const out: string[] = [verdict];
+
+	out.push(
+		["Napkin math:", ...(bc.math.lines.length ? bc.math.lines.map((l) => `- ${l}`) : [bc.math.note])].join("\n"),
+	);
+
+	const labels = bc.value_formula.lines.map((l) => l.split(":")[0]).join(" · ");
+	out.push(`Value lines to count: ${labels}. ${bc.value_formula.rule}`);
+
+	const example = bc.worked_examples[WORKED_EXAMPLE_FOR_ROLE[bc.meta.role]];
+	if (example) out.push(`Worked example (${example.role}): ${example.math}`);
+
+	// First name only in anything written under his name (Marian 2026-11-13).
+	const firstName = (t: string) =>
+		t.replace(/Marianem Kamenistakem/g, "Marianem").replace(/Marian Kamenistak/g, "Marian");
+
+	const clean1 = (v?: string) => (v ?? "").trim().length > 0;
+	const missing: [string, string][] = [];
+	if (!clean1(input.problem)) missing.push(["problem", "the one thing to fix in 90 days, in their words"]);
+	if (!clean1(input.your_name)) missing.push(["your_name", "their first name"]);
+	if (!clean1(input.manager_name)) missing.push(["manager_name", "their manager's first name"]);
+	if (!clean1(input.decide_by)) missing.push(["decide_by", "the date they want a decision by"]);
+	if (missing.length) {
+		out.push(
+			`Heads-up: the drafts below still carry visible [brackets] for ${missing.map(([k]) => k).join(", ")}. Never invent these.`,
+		);
+	}
+
+	out.push(`Email (${firstName(bc.email.subject)})\n\n${firstName(bc.email.body)}`);
+	out.push(`Slack / Teams version\n${firstName(bc.slack_short)}`);
+	out.push(
+		[
+			"If they push back (first line of each answer):",
+			...bc.objections.map((o) => `- ${o.objection} ${firstSentence(o.answer)}`),
+		].join("\n"),
+	);
+
+	const next = [
+		missing.length
+			? `Ask the user for ${missing.map(([k, why]) => `${k} (${why})`).join("; ")}, then call build_mentoring_business_case again with them.`
+			: "The user sends the email first, then asks for 15 minutes with the one-pager.",
+		bc.math.roi_multiple === null
+			? "Ask the user how many senior people on the team might leave, and re-run with at_risk_attrition for a money line."
+			: "",
+		"The finance one-pager, five talking points and sources are on https://www.marian.coach/pricing/#business-case. Free intro call once they have a yes: https://www.marian.coach/meet?ref=mcp",
+	].filter(Boolean);
+	out.push(`Next: ${next.join(" ")}`);
+
+	return out.join("\n\n");
+}
+
 // ─── Wizard options (chips + prices for the website wizard) ───────────────
 
 export function wizardOptions(lang: Lang) {
