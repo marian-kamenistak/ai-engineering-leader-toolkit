@@ -41,5 +41,5 @@ CI deploys on every push to `main` (`.github/workflows/deploy.yml`, ops-automati
 - [ ] `/mcp/mentoring` still routes to `mentoring-inquiry-builder`
 
 ## Gotchas
-- Numbers in tool copy (3,662 sessions, 300+ leaders) must match the data-points registry.
+- Numbers in tool copy (3,662 1:1 leadership sessions, 317 leaders) must match the data-points registry.
 - Run reports (automation-visibility R-W, 2026-10-26; v2 operating standard 2026-11-14): the cron (`src/uptime.ts`) reads the control-room pause flag first, then posts a live v2 run (start, a step per check, end with iterations and the deploy version, `src/run-report.ts` over automation-kit v1.1.1) through the `CONTROL_ROOM` service binding (secret `CONTROL_ROOM_TOKEN`, `.op-secrets`): failures, plus one success a day (first tick after 00:00 UTC). control-room pages a failure once; the Slack webhook is only the fallback when the report could not be delivered. Test: `wrangler deploy --var REPORT_JOB_ID:zz-<name>` reports every tick; redeploy without it.

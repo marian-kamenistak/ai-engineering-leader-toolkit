@@ -526,10 +526,6 @@ export function renderBriefing(bc: BusinessCase, input: BusinessCaseInput): stri
 	const example = bc.worked_examples[WORKED_EXAMPLE_FOR_ROLE[bc.meta.role]];
 	if (example) out.push(`Worked example (${example.role}): ${example.math}`);
 
-	// First name only in anything written under his name (Marian 2026-11-13).
-	const firstName = (t: string) =>
-		t.replace(/Marianem Kamenistakem/g, "Marianem").replace(/Marian Kamenistak/g, "Marian");
-
 	const clean1 = (v?: string) => (v ?? "").trim().length > 0;
 	const missing: [string, string][] = [];
 	if (!clean1(input.problem)) missing.push(["problem", "the one thing to fix in 90 days, in their words"]);
@@ -542,8 +538,8 @@ export function renderBriefing(bc: BusinessCase, input: BusinessCaseInput): stri
 		);
 	}
 
-	out.push(`Email (${firstName(bc.email.subject)})\n\n${firstName(bc.email.body)}`);
-	out.push(`Slack / Teams version\n${firstName(bc.slack_short)}`);
+	out.push(`Email (${bc.email.subject})\n\n${bc.email.body}`);
+	out.push(`Slack / Teams version\n${bc.slack_short}`);
 	out.push(
 		[
 			"If they push back (first line of each answer):",
